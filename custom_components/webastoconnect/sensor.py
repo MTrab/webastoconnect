@@ -1,8 +1,8 @@
 """Sensors for Webasto Connect."""
 
 import logging
-from typing import cast
 
+import homeassistant.util.dt as dt_util
 from homeassistant.components import sensor
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -41,6 +41,16 @@ BINARY_SENSORS = [
         native_unit_of_measurement="V",
         value_fn=lambda webasto: webasto.voltage,
         icon="mdi:car-battery",
+    ),
+    WebastoConnectSensorEntityDescription(
+        key="subscription_expiration",
+        name="Subscription Expiration",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=None,
+        device_class=None,
+        entity_registry_enabled_default=False,
+        value_fn=lambda webasto: webasto.subscription_expiration.strftime("%d-%m-%Y"),
+        icon="mdi:calendar-end",
     ),
 ]
 

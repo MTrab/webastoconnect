@@ -1,5 +1,6 @@
 """Module for interfacing with Webasto Connect."""
 
+from datetime import datetime
 import json
 import threading
 from typing import Any
@@ -300,6 +301,12 @@ class WebastoConnect:
     def output_name(self) -> str:
         """Get the main output name."""
         return self._mainOutput["name"]
+
+    @property
+    def subscription_expiration(self) -> datetime:
+        """Get subscription expiration."""
+        expiration = self._dev_data["subscription"]["expiration"]
+        return datetime.fromtimestamp(expiration)
 
     def __get_value(self, group: str, key: str) -> Any:
         """Get a value from the settings dict."""
