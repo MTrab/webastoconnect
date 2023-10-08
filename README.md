@@ -29,7 +29,7 @@ Webasto <b>DOES NOT</b> provide any public API or documentation of such, so I ca
 # Setup
 
 My Home Assistant shortcut:<br/>
-[![](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=energidataservice)
+[![](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=webastoconnect)
 
 Or go to Home Assistant > Settings > Integrations
 
