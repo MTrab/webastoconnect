@@ -17,7 +17,7 @@ from .const import ATTR_COORDINATOR, DOMAIN
 
 LOGGER = logging.getLogger(__name__)
 
-BINARY_SENSORS = [
+SWITCHES = [
     WebastoConnectSwitchEntityDescription(
         key="main_output",
         name="Output",
@@ -44,10 +44,10 @@ async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
 
     coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
 
-    for b_s in BINARY_SENSORS:
-        entity = WebastoConnectSwitch(b_s, coordinator)
+    for sw in SWITCHES:
+        entity = WebastoConnectSwitch(sw, coordinator)
         LOGGER.debug(
-            "Adding switch '%s' with entity_id '%s'", b_s.name, entity.entity_id
+            "Adding switch '%s' with entity_id '%s'", sw.name, entity.entity_id
         )
         switches.append(entity)
 

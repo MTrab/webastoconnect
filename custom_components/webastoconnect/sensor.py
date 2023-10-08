@@ -1,7 +1,6 @@
 """Sensors for Webasto Connect."""
 
 import logging
-from typing import cast
 
 from homeassistant.components import sensor
 from homeassistant.components.sensor import (
@@ -10,7 +9,6 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify as util_slugify

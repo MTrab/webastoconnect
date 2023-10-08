@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
+from homeassistant.components.number import NumberEntityDescription
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.components.switch import SwitchEntityDescription
 
@@ -45,3 +46,13 @@ class WebastoConnectSwitchEntityDescription(
     command_fn: Callable[[WebastoConnect], None] = None
     type_fn: Callable[[WebastoConnect], None] = None
     name_fn: Callable[[WebastoConnect], None] = None
+
+
+@dataclass
+class WebastoConnectNumberEntityDescription(
+    NumberEntityDescription, WebastoConnectBaseEntityDescriptionMixin
+):
+    """Describes a Webasto number."""
+
+    set_fn: Callable[[WebastoConnect], None] = None
+    unit_fn: Callable[["WebastoConnect"], None] = None

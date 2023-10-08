@@ -14,7 +14,7 @@ https://github.com/mtrab/webastoconnect/issues
 
 DOMAIN = "webastoconnect"
 
-PLATFORMS = ["binary_sensor", "switch", "sensor", "device_tracker"]
+PLATFORMS = ["binary_sensor", "switch", "sensor", "device_tracker", "number"]
 
 NEW_DATA = "webasto_signal"
 
