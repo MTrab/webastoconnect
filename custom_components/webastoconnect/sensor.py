@@ -2,6 +2,7 @@
 
 import logging
 
+import homeassistant.util.dt as dt_util
 from homeassistant.components import sensor
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -9,6 +10,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify as util_slugify
@@ -39,6 +41,16 @@ BINARY_SENSORS = [
         native_unit_of_measurement="V",
         value_fn=lambda webasto: webasto.voltage,
         icon="mdi:car-battery",
+    ),
+    WebastoConnectSensorEntityDescription(
+        key="subscription_expiration",
+        name="Subscription Expiration",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=None,
+        device_class=None,
+        entity_registry_enabled_default=False,
+        value_fn=lambda webasto: webasto.subscription_expiration.strftime("%d-%m-%Y"),
+        icon="mdi:calendar-end",
     ),
 ]
 
