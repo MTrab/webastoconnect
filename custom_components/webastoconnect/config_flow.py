@@ -2,12 +2,12 @@
 
 import logging
 from typing import Any
+
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
-
-from .pywebasto.exceptions import UnauthorizedException
-from .pywebasto import WebastoConnect
+from pywebasto import WebastoConnect
+from pywebasto.exceptions import UnauthorizedException
 
 from .const import DOMAIN
 
