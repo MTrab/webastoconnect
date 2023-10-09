@@ -7,9 +7,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from pywebasto import WebastoConnect
 
 from .const import DOMAIN
-from .pywebasto import WebastoConnect
 
 SCAN_INTERVAL = timedelta(seconds=30)
 LOGGER = logging.getLogger(__name__)

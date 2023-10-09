@@ -7,8 +7,7 @@ from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.components.number import NumberEntityDescription
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.components.switch import SwitchEntityDescription
-
-from .pywebasto import WebastoConnect
+from pywebasto import WebastoConnect
 
 
 @dataclass
