@@ -11,7 +11,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .const import DOMAIN
 from .pywebasto import WebastoConnect
 
-SCAN_INTERVAL = timedelta(seconds=15)
+SCAN_INTERVAL = timedelta(seconds=30)
 LOGGER = logging.getLogger(__name__)
 
 
