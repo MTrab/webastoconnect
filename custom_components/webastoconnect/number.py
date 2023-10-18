@@ -1,14 +1,16 @@
 """Support for number entities in Webasto Connect."""
 
 import logging
-from typing import Any, cast
+from typing import cast
 
 from homeassistant.components import number
 from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
-from homeassistant.core import callback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 from homeassistant.util import slugify as util_slugify
 
 from .api import WebastoConnectUpdateCoordinator
@@ -53,17 +55,19 @@ async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
 
     coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
 
-    for number in NUMBERS:
-        entity = WebastoConnectNumber(number, coordinator)
+    for num in NUMBERS:
+        entity = WebastoConnectNumber(num, coordinator)
         LOGGER.debug(
-            "Adding number '%s' with entity_id '%s'", number.name, entity.entity_id
+            "Adding number '%s' with entity_id '%s'", num.name, entity.entity_id
         )
         numbers_list.append(entity)
 
     async_add_devices(numbers_list)
 
 
-class WebastoConnectNumber(CoordinatorEntity, NumberEntity):
+class WebastoConnectNumber(
+    CoordinatorEntity[DataUpdateCoordinator[None]], NumberEntity
+):
     """Representation of a Webasto Connect number."""
 
     def __init__(
@@ -100,19 +104,9 @@ class WebastoConnectNumber(CoordinatorEntity, NumberEntity):
             util_slugify(f"{self.coordinator.cloud.name} {self._attr_name}")
         )
 
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self.async_write_ha_state()
-
     @property
     def native_value(self) -> float | None:
         """Get the native value."""
-        LOGGER.debug(
-            "Native value for '%s' is '%s'",
-            self.entity_id,
-            self.entity_description.value_fn(self.coordinator.cloud),
-        )
         return cast(float, self.entity_description.value_fn(self.coordinator.cloud))
 
     async def async_set_native_value(self, value: float) -> None:

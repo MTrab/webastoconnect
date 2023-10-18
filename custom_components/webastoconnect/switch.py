@@ -8,7 +8,10 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 from homeassistant.util import slugify as util_slugify
 
 from .api import WebastoConnectUpdateCoordinator
@@ -44,17 +47,19 @@ async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
 
     coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
 
-    for sw in SWITCHES:
-        entity = WebastoConnectSwitch(sw, coordinator)
+    for swi in SWITCHES:
+        entity = WebastoConnectSwitch(swi, coordinator)
         LOGGER.debug(
-            "Adding switch '%s' with entity_id '%s'", sw.name, entity.entity_id
+            "Adding switch '%s' with entity_id '%s'", swi.name, entity.entity_id
         )
         switches.append(entity)
 
     async_add_devices(switches)
 
 
-class WebastoConnectSwitch(CoordinatorEntity, SwitchEntity):
+class WebastoConnectSwitch(
+    CoordinatorEntity[DataUpdateCoordinator[None]], SwitchEntity
+):
     """Representation of a Webasto Connect switch."""
 
     def __init__(
