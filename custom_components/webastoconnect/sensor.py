@@ -2,7 +2,6 @@
 
 import logging
 
-import homeassistant.util.dt as dt_util
 from homeassistant.components import sensor
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -12,7 +11,10 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 from homeassistant.util import slugify as util_slugify
 
 from .api import WebastoConnectUpdateCoordinator
@@ -56,7 +58,7 @@ BINARY_SENSORS = [
 
 
 async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
-    """Setup binary_sensors."""
+    """Setup sensors."""
     sensors = []
 
     coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
@@ -64,14 +66,16 @@ async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
     for b_s in BINARY_SENSORS:
         entity = WebastoConnectSensor(b_s, coordinator)
         LOGGER.debug(
-            "Adding binary_sensor '%s' with entity_id '%s'", b_s.name, entity.entity_id
+            "Adding sensor '%s' with entity_id '%s'", b_s.name, entity.entity_id
         )
         sensors.append(entity)
 
     async_add_devices(sensors)
 
 
-class WebastoConnectSensor(CoordinatorEntity, SensorEntity):
+class WebastoConnectSensor(
+    CoordinatorEntity[DataUpdateCoordinator[None]], SensorEntity
+):
     """Representation of a Webasto Connect Sensor."""
 
     def __init__(

@@ -8,7 +8,10 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 from homeassistant.util import slugify as util_slugify
 
 from .api import WebastoConnectUpdateCoordinator
@@ -46,7 +49,9 @@ async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
     async_add_devices(binarysensors)
 
 
-class WebastoConnectBinarySensor(CoordinatorEntity, BinarySensorEntity):
+class WebastoConnectBinarySensor(
+    CoordinatorEntity[DataUpdateCoordinator[None]], BinarySensorEntity
+):
     """Representation of a Webasto Connect Binary Sensor."""
 
     def __init__(

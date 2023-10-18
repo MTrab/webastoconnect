@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.loader import async_get_integration
 from pywebasto.exceptions import UnauthorizedException
 
-from .api import WebastoConnector, WebastoConnectUpdateCoordinator
+from .api import WebastoConnectUpdateCoordinator
 from .const import ATTR_COORDINATOR, DOMAIN, PLATFORMS, STARTUP
 
 LOGGER = logging.getLogger(__name__)
@@ -53,12 +53,10 @@ async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    for platform in PLATFORMS:
-        await hass.config_entries.async_forward_entry_unload(entry, platform)
-
-    hass.data[DOMAIN].pop(entry.entry_id)
-
-    return True
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        hass.data[DOMAIN].pop(entry.entry_id)
+    return unload_ok
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:

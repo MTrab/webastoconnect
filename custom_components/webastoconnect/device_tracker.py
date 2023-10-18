@@ -7,7 +7,10 @@ from homeassistant.components.device_tracker import SourceType, TrackerEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
 from homeassistant.helpers.entity import EntityDescription
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 from homeassistant.util import slugify as util_slugify
 
 from .api import WebastoConnectUpdateCoordinator
@@ -19,6 +22,7 @@ TRACKER = EntityDescription(
     key="devicetracker",
     name="Location",
     entity_registry_enabled_default=True,
+    icon="mdi:car",
 )
 
 
@@ -32,7 +36,9 @@ async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
     async_add_devices([entity])
 
 
-class WebastoConnectDeviceTracker(CoordinatorEntity, TrackerEntity):
+class WebastoConnectDeviceTracker(
+    CoordinatorEntity[DataUpdateCoordinator[None]], TrackerEntity
+):
     """A device tracker for Webasto Connect."""
 
     def __init__(
@@ -40,7 +46,7 @@ class WebastoConnectDeviceTracker(CoordinatorEntity, TrackerEntity):
         description: EntityDescription,
         coordinator: WebastoConnectUpdateCoordinator,
     ) -> None:
-        """Initialize a Webasto Connect switch."""
+        """Initialize a Webasto Connect device tracker."""
         super().__init__(coordinator)
 
         self.entity_description = description
@@ -52,6 +58,9 @@ class WebastoConnectDeviceTracker(CoordinatorEntity, TrackerEntity):
         self._attr_unique_id = util_slugify(
             f"{self._attr_name}_{self._config.entry_id}"
         )
+
+        self._prev_lat = self.coordinator.cloud.location["lat"]
+        self._prev_lon = self.coordinator.cloud.location["lon"]
 
         self._attr_should_poll = False
 
@@ -66,25 +75,26 @@ class WebastoConnectDeviceTracker(CoordinatorEntity, TrackerEntity):
             util_slugify(f"{self.coordinator.cloud.name} {self._attr_name}")
         )
 
-        self._handle_location()
-
-    def _handle_location(self) -> None:
+    @property
+    def available(self) -> bool:
         """Handle the location states."""
         if isinstance(self.coordinator.cloud.location, type(None)):
             self._attr_available = False
+            return False
         else:
             self._attr_available = True
-
-        # if self.coordinator.cloud.allow_location:
-        #     self.enabled = True
-        # else:
-        #     self.enabled = False
+            return True
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self._handle_location()
-        self.async_write_ha_state()
+        if (
+            self.coordinator.cloud.location["lat"] != self._prev_lat
+            or self.coordinator.cloud.location["lon"] != self._prev_lon
+        ):
+            self._prev_lat = self.coordinator.cloud.location["lat"]
+            self._prev_lon = self.coordinator.cloud.location["lon"]
+            self.async_write_ha_state()
 
     @property
     def source_type(self) -> SourceType | str | None:
