@@ -17,7 +17,7 @@ Webasto <b>DOES NOT</b> provide any public API or documentation of such, so I ca
 ### <strike>Option 1 (easy) - HACS:</strike>
 
 - <strike>Ensure that HACS is installed.</strike>
-- <strike>Search for and install the "Energi Data Service" integration.</strike>
+- <strike>Search for and install the "Webasto Connect" integration.</strike>
 - <strike>Restart Home Assistant.</strike>
 
 ### Option 2 - Manual installation:
