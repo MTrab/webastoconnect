@@ -25,18 +25,36 @@ SWITCHES = [
         key="main_output",
         name="Output",
         entity_category=None,
-        value_fn=lambda webasto: cast(bool, webasto.output),
-        command_fn=lambda webasto, state: webasto.set_output(state),
-        name_fn=lambda webasto: webasto.output_name,
+        value_fn=lambda webasto: cast(bool, webasto.output_main),
+        command_fn=lambda webasto, state: webasto.set_output_main(state),
+        name_fn=lambda webasto: webasto.output_main_name,
         entity_registry_enabled_default=True,
     ),
     WebastoConnectSwitchEntityDescription(
         key="ventilation_mode",
         name="Ventilation Mode",
         entity_category=EntityCategory.CONFIG,
-        value_fn=lambda webasto: cast(bool, webasto.isVentilation),
+        value_fn=lambda webasto: cast(bool, webasto.is_ventilation),
         command_fn=lambda webasto, state: webasto.ventilation_mode(state),
         entity_registry_enabled_default=False,
+    ),
+    WebastoConnectSwitchEntityDescription(
+        key="aux1_output",
+        name="AUX1",
+        entity_category=None,
+        value_fn=lambda webasto: cast(bool, webasto.output_aux1),
+        command_fn=lambda webasto, state: webasto.set_output_aux1(state),
+        name_fn=lambda webasto: webasto.output_aux1_name,
+        entity_registry_enabled_default=True,
+    ),
+    WebastoConnectSwitchEntityDescription(
+        key="aux2_output",
+        name="AUX2",
+        entity_category=None,
+        value_fn=lambda webasto: cast(bool, webasto.output_aux2),
+        command_fn=lambda webasto, state: webasto.set_output_aux2(state),
+        name_fn=lambda webasto: webasto.output_aux2_name,
+        entity_registry_enabled_default=True,
     ),
 ]
 
@@ -48,11 +66,16 @@ async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
     coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
 
     for swi in SWITCHES:
-        entity = WebastoConnectSwitch(swi, coordinator)
-        LOGGER.debug(
-            "Adding switch '%s' with entity_id '%s'", swi.name, entity.entity_id
-        )
-        switches.append(entity)
+        LOGGER.debug("Testing '%s'", swi.name)
+        if (
+            isinstance(swi.name_fn, type(None))
+            or swi.name_fn(coordinator.cloud) is not False
+        ):
+            entity = WebastoConnectSwitch(swi, coordinator)
+            LOGGER.debug(
+                "Adding switch '%s' with entity_id '%s'", swi.name, entity.entity_id
+            )
+            switches.append(entity)
 
     async_add_devices(switches)
 
@@ -89,7 +112,7 @@ class WebastoConnectSwitch(
 
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self.coordinator.cloud.device_id)},
-            "name": self.name,
+            "name": self.coordinator.cloud.name,
             "model": "ThermoConnect",
             "manufacturer": "Webasto",
         }
@@ -114,7 +137,7 @@ class WebastoConnectSwitch(
         self._attr_is_on = self.entity_description.value_fn(self.coordinator.cloud)
 
         if self.entity_description.key == "main_output":
-            if self.coordinator.cloud.isVentilation:
+            if self.coordinator.cloud.is_ventilation:
                 self._attr_icon = "mdi:fan" if self._attr_is_on else "mdi:fan-off"
             else:
                 self._attr_icon = (
