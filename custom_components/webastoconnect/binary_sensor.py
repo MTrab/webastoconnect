@@ -82,7 +82,7 @@ class WebastoConnectBinarySensor(
 
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self.coordinator.cloud.device_id)},
-            "name": self.name,
+            "name": self.coordinator.cloud.name,
             "model": "ThermoConnect",
             "manufacturer": "Webasto",
         }
