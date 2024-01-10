@@ -1,0 +1,19 @@
+{
+    "config": {
+        "title": "Ligação Webasto (ThermoConnect)",
+        "abort": {
+            "already_configured": "Equipamento já configurado"
+        },
+        "error": {
+            "invalid_auth": "Erro na autenticação"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "email": "Email",
+                    "password": "Senha"
+                }
+            }
+        }
+    }
+}
