@@ -20,14 +20,9 @@ categories:
       - 'bugfix'
       - 'bug'
 
-  - title: '🧬 Changes to Charge Owner informations'
+  - title: '🔈 Translations update'
     labels:
-      - chargeowner
-      - chargeowners
-
-  - title: '🧬 New Charge Owner(s) added'
-    labels:
-      - 'new chargeowner'
+      - 'translations'
 
   - title: '🧰 Maintenance'
     label: 'chore'
