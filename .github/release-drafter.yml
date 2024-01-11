@@ -22,7 +22,7 @@ categories:
 
   - title: '🔈 Translations update'
     labels:
-      - 'translations'
+      - 'translation'
 
   - title: '🧰 Maintenance'
     label: 'chore'
