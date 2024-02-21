@@ -1,16 +1,16 @@
 {
     "config": {
         "abort": {
-            "already_configured": "Device is already configured"
+            "already_configured": "Enheden er allerede konfigureret"
         },
         "error": {
-            "invalid_auth": "Invalid authentication"
+            "invalid_auth": "Ugyldig autentificering"
         },
         "step": {
             "user": {
                 "data": {
                     "email": "Email",
-                    "password": "Password"
+                    "password": "Kodeord"
                 }
             }
         },
