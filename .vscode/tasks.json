@@ -1,0 +1,11 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Home Assistant developer env on port 9129",
+            "type": "shell",
+            "command": "scripts/develop",
+            "problemMatcher": []
+        }
+    ]
+}
