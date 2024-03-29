@@ -19,3 +19,5 @@ PLATFORMS = ["binary_sensor", "switch", "sensor", "device_tracker", "number"]
 NEW_DATA = "webasto_signal"
 
 ATTR_COORDINATOR = "updatecoordinator"
+ATTR_SPEED = "speed"
+ATTR_DIRECTION = "direction"
