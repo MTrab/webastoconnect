@@ -14,7 +14,7 @@ from homeassistant.helpers.update_coordinator import (
 from homeassistant.util import slugify as util_slugify
 
 from .api import WebastoConnectUpdateCoordinator
-from .const import ATTR_COORDINATOR, DOMAIN
+from .const import ATTR_COORDINATOR, ATTR_DIRECTION, ATTR_SPEED, DOMAIN
 
 LOGGER = logging.getLogger(__name__)
 
@@ -75,6 +75,16 @@ class WebastoConnectDeviceTracker(
             util_slugify(f"{self.coordinator.cloud.name} {self._attr_name}")
         )
 
+        self._attributes = {
+                ATTR_DIRECTION: self.coordinator.cloud.heading,
+                ATTR_SPEED: self.coordinator.cloud.speed,
+            }
+
+    @property
+    def extra_state_attributes(self):
+        """Return device specific attributes."""
+        return self._attributes
+
     @property
     def available(self) -> bool:
         """Handle the location states."""
@@ -94,6 +104,12 @@ class WebastoConnectDeviceTracker(
         ):
             self._prev_lat = self.coordinator.cloud.location["lat"]
             self._prev_lon = self.coordinator.cloud.location["lon"]
+
+            self._attributes = {
+                ATTR_DIRECTION: self.coordinator.cloud.heading,
+                ATTR_SPEED: self.coordinator.cloud.speed,
+            }
+
             self.async_write_ha_state()
 
     @property
