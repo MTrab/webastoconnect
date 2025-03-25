@@ -15,6 +15,7 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
+
 from homeassistant.util import slugify as util_slugify
 
 from .api import WebastoConnectUpdateCoordinator

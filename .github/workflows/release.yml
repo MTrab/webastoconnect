@@ -6,7 +6,7 @@ on:
     types: [published]
 
 env:
-  COMPONENT_DIR: landroid_cloud
+  COMPONENT_DIR: webastoconnect
 
 jobs:
   release_zip_file:

@@ -75,10 +75,7 @@ class WebastoConnectDeviceTracker(
             util_slugify(f"{self.coordinator.cloud.name} {self._attr_name}")
         )
 
-        self._attributes = {
-                ATTR_DIRECTION: self.coordinator.cloud.heading,
-                ATTR_SPEED: self.coordinator.cloud.speed,
-            }
+        self._attributes = {}
 
     @property
     def extra_state_attributes(self):
@@ -105,10 +102,7 @@ class WebastoConnectDeviceTracker(
             self._prev_lat = self.coordinator.cloud.location["lat"]
             self._prev_lon = self.coordinator.cloud.location["lon"]
 
-            self._attributes = {
-                ATTR_DIRECTION: self.coordinator.cloud.heading,
-                ATTR_SPEED: self.coordinator.cloud.speed,
-            }
+            self._attributes = {}
 
             self.async_write_ha_state()
 

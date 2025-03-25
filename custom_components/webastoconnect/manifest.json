@@ -12,7 +12,7 @@
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/MTrab/webastoconnect/issues",
     "requirements": [
-        "pywebasto==1.0.6"
+        "pywebasto==1.0.7"
     ],
     "version": "0.2.1b1"
 }
