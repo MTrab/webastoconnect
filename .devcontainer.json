@@ -1,6 +1,6 @@
 {
 	"name": "Webastoconnect",
-	"image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+	"image": "mcr.microsoft.com/devcontainers/python:3.13-bookworm",
 	"postCreateCommand": "scripts/setup",
 	"appPort": [
 		"9129:8123"
@@ -17,7 +17,9 @@
 				"ms-python.python",
 				"github.vscode-pull-request-github",
 				"ryanluker.vscode-coverage-gutters",
-				"ms-python.vscode-pylance"
+				"ms-python.vscode-pylance",
+				"ms-python.isort",
+				"ms-python.black-formatter"
 			],
 			"settings": {
 				"files.eol": "\n",
@@ -37,9 +39,6 @@
 	},
 	"remoteUser": "root",
 	"features": {
-		"ghcr.io/devcontainers/features/rust:1": {},
-		"ghcr.io/devcontainers/features/python:1": {
-			"version": "latest"
-		}
+		"ghcr.io/devcontainers/features/rust:1": {}
 	}
 }
