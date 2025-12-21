@@ -4,6 +4,10 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+pip uninstall -y pywebasto || true
+
+pip3 install --upgrade "pycares==4.3.0"
+
 # Create config dir if not present
 if [[ ! -d "${PWD}/config" ]]; then
     mkdir -p "${PWD}/config"
