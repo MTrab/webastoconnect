@@ -32,7 +32,7 @@ class WebastoConnectBinarySensorEntityDescription(
 class WebastoConnectSensorEntityDescription(SensorEntityDescription):
     """Describes a Webasto sensor."""
 
-    value_fn: Callable[[Any], Any]
+    value_fn: Optional[Callable[[Any], Any | None]] = None
     unit_fn: Optional[Callable[[Any], Any]] = None
 
 
