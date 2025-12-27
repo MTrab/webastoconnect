@@ -15,7 +15,6 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
-
 from homeassistant.util import slugify as util_slugify
 
 from .api import WebastoConnectUpdateCoordinator
@@ -24,7 +23,7 @@ from .const import ATTR_COORDINATOR, DOMAIN
 
 LOGGER = logging.getLogger(__name__)
 
-BINARY_SENSORS = [
+SENSORS = [
     WebastoConnectSensorEntityDescription(
         key="temperature",
         name="Temperature",
@@ -64,12 +63,14 @@ async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
 
     coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
 
-    for b_s in BINARY_SENSORS:
-        entity = WebastoConnectSensor(b_s, coordinator)
-        LOGGER.debug(
-            "Adding sensor '%s' with entity_id '%s'", b_s.name, entity.entity_id
-        )
-        sensors.append(entity)
+    for id, device in coordinator.cloud.devices.items():
+        LOGGER.debug("Setting up sensors for device: %s", device.name)
+        for s in SENSORS:
+            entity = WebastoConnectSensor(id, s, coordinator)
+            LOGGER.debug(
+                "Adding sensor '%s' with entity_id '%s'", s.name, entity.entity_id
+            )
+            sensors.append(entity)
 
     async_add_devices(sensors)
 
@@ -81,6 +82,7 @@ class WebastoConnectSensor(
 
     def __init__(
         self,
+        device_id: str,
         description: WebastoConnectSensorEntityDescription,
         coordinator: WebastoConnectUpdateCoordinator,
     ) -> None:
@@ -91,37 +93,40 @@ class WebastoConnectSensor(
         self.coordinator = coordinator
         self._config = coordinator.entry
         self._hass = coordinator.hass
+        self._device_id = device_id
 
         self._attr_name = self.entity_description.name
         self._attr_unique_id = util_slugify(
-            f"{self._attr_name}_{self._config.entry_id}"
+            f"{self.coordinator.cloud.devices[self._device_id].device_id}_{self._attr_name}"
         )
         self._attr_should_poll = False
         self._attr_icon = self.entity_description.icon
         self._attr_native_value = self.entity_description.value_fn(
-            self.coordinator.cloud
+            self.coordinator.cloud.devices[self._device_id]
         )
 
         if not isinstance(description.unit_fn, type(None)):
             self._attr_native_unit_of_measurement = description.unit_fn(
-                coordinator.cloud
+                self.coordinator.cloud.devices[self._device_id]
             )
 
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, self.coordinator.cloud.device_id)},
-            "name": self.coordinator.cloud.name,
+            "identifiers": {(DOMAIN, self._device_id)},
+            "name": self.coordinator.cloud.devices[self._device_id].name,
             "model": "ThermoConnect",
             "manufacturer": "Webasto",
         }
 
         self.entity_id = sensor.ENTITY_ID_FORMAT.format(
-            util_slugify(f"{self.coordinator.cloud.name} {self._attr_name}")
+            util_slugify(
+                f"{self.coordinator.cloud.devices[self._device_id].name} {self._attr_name}"
+            )
         )
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         self._attr_native_value = self.entity_description.value_fn(
-            self.coordinator.cloud
+            self.coordinator.cloud.devices[self._device_id]
         )
         self.async_write_ha_state()

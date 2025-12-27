@@ -43,14 +43,12 @@ class WebastoConnectConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_auth"
 
             if "base" not in errors:
-                await self.async_set_unique_id(
-                    f"{user_input[CONF_EMAIL]}_{webasto.device_id}"
-                )
+                await self.async_set_unique_id(f"{user_input[CONF_EMAIL]}")
 
                 return self.async_create_entry(
-                    title=webasto.name,
+                    title=user_input[CONF_EMAIL],
                     data=user_input,
-                    description=f"Webasto ThermoConnect - {webasto.name}",
+                    description=f"Webasto ThermoConnect - {user_input[CONF_EMAIL]}",
                 )
 
         LOGGER.debug("Showing configuration form")

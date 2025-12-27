@@ -55,12 +55,14 @@ async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
 
     coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
 
-    for num in NUMBERS:
-        entity = WebastoConnectNumber(num, coordinator)
-        LOGGER.debug(
-            "Adding number '%s' with entity_id '%s'", num.name, entity.entity_id
-        )
-        numbers_list.append(entity)
+    for id, device in coordinator.cloud.devices.items():
+        LOGGER.debug("Setting up numbers for device: %s", device.name)
+        for num in NUMBERS:
+            entity = WebastoConnectNumber(id, num, coordinator)
+            LOGGER.debug(
+                "Adding number '%s' with entity_id '%s'", num.name, entity.entity_id
+            )
+            numbers_list.append(entity)
 
     async_add_devices(numbers_list)
 
@@ -72,6 +74,7 @@ class WebastoConnectNumber(
 
     def __init__(
         self,
+        device_id: str,
         description: WebastoConnectNumberEntityDescription,
         coordinator: WebastoConnectUpdateCoordinator,
     ) -> None:
@@ -82,37 +85,47 @@ class WebastoConnectNumber(
         self._config = coordinator.entry
         self.coordinator = coordinator
         self._hass = coordinator.hass
+        self._device_id = device_id
 
         self._attr_name = self.entity_description.name
         self._attr_unique_id = util_slugify(
-            f"{self._attr_name}_{self._config.entry_id}"
+            f"{self.coordinator.cloud.devices[self._device_id].device_id}_{self._attr_name}"
         )
         self._attr_should_poll = False
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, self.coordinator.cloud.device_id)},
-            "name": self.coordinator.cloud.name,
+            "identifiers": {(DOMAIN, self._device_id)},
+            "name": self.coordinator.cloud.devices[self._device_id].name,
             "model": "ThermoConnect",
             "manufacturer": "Webasto",
         }
 
         if not isinstance(description.unit_fn, type(None)):
             self._attr_native_unit_of_measurement = description.unit_fn(
-                coordinator.cloud
+                coordinator.cloud.devices[self._device_id]
             )
 
         self.entity_id = number.ENTITY_ID_FORMAT.format(
-            util_slugify(f"{self.coordinator.cloud.name} {self._attr_name}")
+            util_slugify(
+                f"{self.coordinator.cloud.devices[self._device_id].name} {self._attr_name}"
+            )
         )
 
     @property
     def native_value(self) -> float | None:
         """Get the native value."""
-        return cast(float, self.entity_description.value_fn(self.coordinator.cloud))
+        return cast(
+            float,
+            self.entity_description.value_fn(
+                self.coordinator.cloud.devices[self._device_id]
+            ),
+        )
 
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
         LOGGER.debug("Setting '%s' to '%s'", self.entity_id, value)
         await self._hass.async_add_executor_job(
-            self.entity_description.set_fn, self.coordinator.cloud, value
+            self.entity_description.set_fn,
+            self.coordinator.cloud.devices[self._device_id],
+            value,
         )
         await self.coordinator.async_refresh()

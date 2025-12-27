@@ -9,7 +9,7 @@ from homeassistant.loader import async_get_integration
 from pywebasto.exceptions import UnauthorizedException
 
 from .api import WebastoConnectUpdateCoordinator
-from .const import ATTR_COORDINATOR, DOMAIN, PLATFORMS, STARTUP
+from .const import ATTR_COORDINATOR, ATTR_DEVICES, DOMAIN, PLATFORMS, STARTUP
 
 LOGGER = logging.getLogger(__name__)
 
@@ -18,12 +18,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up cloud API connector from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
-    result = await _async_setup(hass, entry)
+    await _async_setup(hass, entry)
 
-    if result:
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    return result
+    return True
 
 
 async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -37,18 +36,21 @@ async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = WebastoConnectUpdateCoordinator(hass, entry)
     try:
         await hass.async_add_executor_job(coordinator.cloud.connect)
-        LOGGER.debug("Connected to %s", coordinator.cloud.name)
+        LOGGER.debug("Connected to Webasto API for %s", entry.data.get(CONF_EMAIL))
     except UnauthorizedException:
         LOGGER.error("Invalid email or password specified!")
         return False
 
     hass.data[DOMAIN][entry.entry_id] = {
         ATTR_COORDINATOR: coordinator,
+        ATTR_DEVICES: {},
     }
 
     await coordinator.async_config_entry_first_refresh()
 
-    return True
+    for id, device in coordinator.cloud.devices.items():
+        LOGGER.debug("Found device: %s", device.name)
+        hass.data[DOMAIN][entry.entry_id][ATTR_DEVICES][id] = device
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
