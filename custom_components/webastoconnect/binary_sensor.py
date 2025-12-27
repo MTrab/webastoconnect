@@ -79,7 +79,9 @@ class WebastoConnectBinarySensor(
         )
         self._attr_should_poll = False
 
-        self._attr_is_on = self.entity_description.value_fn(self.coordinator.cloud.devices[self._device_id])
+        self._attr_is_on = self.entity_description.value_fn(
+            self.coordinator.cloud.devices[self._device_id]
+        )
         self._attr_icon = (
             self.entity_description.icon_on
             if self._attr_is_on
@@ -91,6 +93,13 @@ class WebastoConnectBinarySensor(
             "name": self.coordinator.cloud.devices[self._device_id].name,
             "model": "ThermoConnect",
             "manufacturer": "Webasto",
+            "hw_version": self.coordinator.cloud.devices[self._device_id].settings[
+                "hw_version"
+            ],
+            "sw_version": self.coordinator.cloud.devices[self._device_id].settings[
+                "sw_version"
+            ],
+            "configuration_url": "https://my.webastoconnect.com",
         }
 
         self.entity_id = binary_sensor.ENTITY_ID_FORMAT.format(
@@ -102,7 +111,9 @@ class WebastoConnectBinarySensor(
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self._attr_is_on = self.entity_description.value_fn(self.coordinator.cloud.devices[self._device_id])
+        self._attr_is_on = self.entity_description.value_fn(
+            self.coordinator.cloud.devices[self._device_id]
+        )
         self._attr_icon = (
             self.entity_description.icon_on
             if self._attr_is_on

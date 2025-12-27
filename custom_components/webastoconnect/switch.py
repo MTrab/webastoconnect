@@ -121,6 +121,13 @@ class WebastoConnectSwitch(
             "name": self.coordinator.cloud.devices[self._device_id].name,
             "model": "ThermoConnect",
             "manufacturer": "Webasto",
+            "hw_version": self.coordinator.cloud.devices[self._device_id].settings[
+                "hw_version"
+            ],
+            "sw_version": self.coordinator.cloud.devices[self._device_id].settings[
+                "sw_version"
+            ],
+            "configuration_url": "https://my.webastoconnect.com",
         }
 
         self._handle_states()

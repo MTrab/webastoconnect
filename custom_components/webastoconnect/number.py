@@ -92,11 +92,19 @@ class WebastoConnectNumber(
             f"{self.coordinator.cloud.devices[self._device_id].device_id}_{self._attr_name}"
         )
         self._attr_should_poll = False
+
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._device_id)},
             "name": self.coordinator.cloud.devices[self._device_id].name,
             "model": "ThermoConnect",
             "manufacturer": "Webasto",
+            "hw_version": self.coordinator.cloud.devices[self._device_id].settings[
+                "hw_version"
+            ],
+            "sw_version": self.coordinator.cloud.devices[self._device_id].settings[
+                "sw_version"
+            ],
+            "configuration_url": "https://my.webastoconnect.com",
         }
 
         if not isinstance(description.unit_fn, type(None)):
