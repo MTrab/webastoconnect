@@ -2,22 +2,23 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any, Callable, Optional, Union
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.components.number import NumberEntityDescription
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.components.switch import SwitchEntityDescription
-from pywebasto import WebastoConnect
+from pywebasto import WebastoConnect, WebastoDevice
 
 
-@dataclass
+@dataclass(frozen=True)
 class WebastoConnectBaseEntityDescriptionMixin:
     """Describes a basic Webasto entity."""
 
-    value_fn: Callable[[WebastoConnect], bool | str | int | float]
+    value_fn: Callable[[WebastoDevice], bool | str | int | float]
 
 
-@dataclass
+@dataclass(frozen=True)
 class WebastoConnectBinarySensorEntityDescription(
     BinarySensorEntityDescription, WebastoConnectBaseEntityDescriptionMixin
 ):
@@ -27,31 +28,32 @@ class WebastoConnectBinarySensorEntityDescription(
     icon_off: str | None = None
 
 
-@dataclass
-class WebastoConnectSensorEntityDescription(
-    SensorEntityDescription, WebastoConnectBaseEntityDescriptionMixin
-):
+@dataclass(frozen=True)
+class WebastoConnectSensorEntityDescription(SensorEntityDescription):
     """Describes a Webasto sensor."""
 
-    unit_fn: Callable[["WebastoConnect"], None] = None
+    value_fn: Callable[[Any], Any]
+    unit_fn: Optional[Callable[[Any], Any]] = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class WebastoConnectSwitchEntityDescription(
     SwitchEntityDescription, WebastoConnectBaseEntityDescriptionMixin
 ):
     """Describes a Webasto switch."""
 
-    command_fn: Callable[[WebastoConnect], None] = None
-    type_fn: Callable[[WebastoConnect], None] = None
-    name_fn: Callable[[WebastoConnect], None] = None
+    # allow command_fn to accept (webasto, id, state) by using a variadic Callable
+    command_fn: Optional[Callable[..., Any]] = None
+    type_fn: Optional[Callable[[WebastoConnect], None]] = None
+    name_fn: Optional[Callable[["WebastoDevice"], Union[str, bool]]] = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class WebastoConnectNumberEntityDescription(
     NumberEntityDescription, WebastoConnectBaseEntityDescriptionMixin
 ):
     """Describes a Webasto number."""
 
-    set_fn: Callable[[WebastoConnect], None] = None
-    unit_fn: Callable[["WebastoConnect"], None] = None
+    value_fn: Callable[[Any], Any]
+    set_fn: Optional[Callable[[Any, Any], Any]] = None
+    unit_fn: Optional[Callable[["WebastoDevice"], Any]] = None
