@@ -52,6 +52,8 @@ async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         LOGGER.debug("Found device: %s", device.name)
         hass.data[DOMAIN][entry.entry_id][ATTR_DEVICES][id] = device
 
+    return True
+
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
