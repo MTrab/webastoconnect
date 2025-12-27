@@ -28,19 +28,15 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-    data_entry = hass.data[DOMAIN][entry.entry_id]
-
     data_dict = {
         "entry": entry.as_dict(),
     }
 
-    device_dict = {}
     api: WebastoConnectUpdateCoordinator = hass.data[DOMAIN][entry.entry_id][
         ATTR_COORDINATOR
     ]
 
     for id, device in api.cloud.devices.items():
-        data_dict.update({id: device.__dict__})
-    # data_dict.update({"Latest devices dataset": api.cloud.devices.__dict__})
+        data_dict.update({str(id): device.__dict__})
 
     return async_redact_data(data_dict, TO_REDACT)
