@@ -18,11 +18,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up cloud API connector from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
-    await _async_setup(hass, entry)
+    result = await _async_setup(hass, entry)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    return True
+    return result
 
 
 async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -56,6 +56,7 @@ async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
     return unload_ok
