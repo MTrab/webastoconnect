@@ -43,7 +43,7 @@ async def _async_migrate_unique_ids(
         updates = None
         entry_id = entry.entry_id
         entity_unique_id = entity_entry.unique_id
-        entity_name = entity_entry.suggested_object_id
+        entity_name = entity_entry.original_name
 
         if not heater_name.lower() in str(entity_entry.suggested_object_id):
             LOGGER.debug(
