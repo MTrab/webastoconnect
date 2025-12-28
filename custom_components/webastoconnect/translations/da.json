@@ -1,7 +1,7 @@
 {
     "config": {
         "abort": {
-            "already_configured": "Enheden er allerede konfigureret"
+            "already_configured": "Denne konto er allerede tilføjet"
         },
         "error": {
             "invalid_auth": "Ugyldig autentificering"
