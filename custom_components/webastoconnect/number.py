@@ -7,10 +7,6 @@ from homeassistant.components import number
 from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-)
 from homeassistant.util import slugify as util_slugify
 
 from .api import WebastoConnectUpdateCoordinator
@@ -95,14 +91,14 @@ class WebastoConnectNumber(WebastoBaseEntity, NumberEntity):
         """Get the native value."""
         return cast(
             float,
-            self.entity_description.value_fn(self._cloud.devices[self._device_id]), # type: ignore
+            self.entity_description.value_fn(self._cloud.devices[self._device_id]),  # type: ignore
         )
 
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
         LOGGER.debug("Setting '%s' to '%s'", self.entity_id, value)
         await self._hass.async_add_executor_job(
-            self.entity_description.set_fn, # type: ignore
+            self.entity_description.set_fn,  # type: ignore
             self._cloud.devices[self._device_id],
             value,
         )
