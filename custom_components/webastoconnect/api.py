@@ -21,9 +21,9 @@ class WebastoConnector:
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialization of the connector."""
         self.hass = hass
-        self.entry = entry
         self.cloud: WebastoConnect = WebastoConnect(
-            entry.data.get(CONF_EMAIL), entry.data.get(CONF_PASSWORD)
+            entry.options.get(CONF_EMAIL, entry.data.get(CONF_EMAIL)),
+            entry.options.get(CONF_PASSWORD, entry.data.get(CONF_PASSWORD)),
         )
 
 
@@ -41,9 +41,10 @@ class WebastoConnectUpdateCoordinator(DataUpdateCoordinator[None]):
         )
 
         self.hass = hass
-        self.entry = entry
+        self.config_entry = entry
         self.cloud: WebastoConnect = WebastoConnect(
-            entry.data.get(CONF_EMAIL), entry.data.get(CONF_PASSWORD)
+            entry.options.get(CONF_EMAIL, entry.data.get(CONF_EMAIL)),
+            entry.options.get(CONF_PASSWORD, entry.data.get(CONF_PASSWORD)),
         )
 
     async def _async_update_data(self) -> datetime | None:

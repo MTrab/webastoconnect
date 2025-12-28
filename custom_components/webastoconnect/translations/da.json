@@ -2,13 +2,35 @@
     "title": "Webasto Connect (ThermoConnect)",
     "config": {
         "abort": {
-            "already_configured": "Denne konto er allerede tilføjet"
+            "already_configured": "Denne konto er allerede registreret",
+            "reauth_successful": "Genautentificering gennemført"
         },
         "error": {
             "invalid_auth": "Ugyldig autentificering"
         },
         "step": {
+            "reauth_confirm": {
+                "description": "Venligst genautentificer din Webasto Connect konto for at fortsætte.",
+                "title": "Genautentificer Webasto Connect konto",
+                "data": {
+                    "email": "Email",
+                    "password": "Kodeord"
+                }
+            },
             "user": {
+                "data": {
+                    "email": "Email",
+                    "password": "Kodeord"
+                }
+            }
+        }
+    },
+    "options": {
+        "error": {
+            "invalid_auth": "Ugyldig autentificering"
+        },
+        "step": {
+            "init": {
                 "data": {
                     "email": "Email",
                     "password": "Kodeord"

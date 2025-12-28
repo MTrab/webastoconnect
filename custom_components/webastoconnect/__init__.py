@@ -6,6 +6,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import entity_registry as er
 from homeassistant.loader import async_get_integration
 from homeassistant.util import slugify as util_slugify
@@ -90,10 +91,12 @@ async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = WebastoConnectUpdateCoordinator(hass, entry)
     try:
         await hass.async_add_executor_job(coordinator.cloud.connect)
-        LOGGER.debug("Connected to Webasto API for %s", entry.data.get(CONF_EMAIL))
+        LOGGER.debug(
+            "Connected to Webasto API for %s",
+            entry.options.get(CONF_EMAIL, entry.data.get(CONF_EMAIL)),
+        )
     except UnauthorizedException:
-        LOGGER.error("Invalid email or password specified!")
-        return False
+        raise ConfigEntryAuthFailed("Invalid email or password specified") from None
 
     hass.data[DOMAIN][entry.entry_id] = {
         ATTR_COORDINATOR: coordinator,
@@ -104,9 +107,8 @@ async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     for id, device in coordinator.cloud.devices.items():
         LOGGER.debug("Found device: %s", device.name)
-        await _async_migrate_unique_ids(
-            hass, id, device.name, entry
-        )  # Migrate unique IDs
+        # Migrate unique IDs
+        await _async_migrate_unique_ids(hass, id, device.name, entry)
         hass.data[DOMAIN][entry.entry_id][ATTR_DEVICES][id] = device
 
     return True
