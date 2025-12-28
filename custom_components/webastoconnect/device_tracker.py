@@ -8,14 +8,12 @@ from homeassistant.components.device_tracker.const import SourceType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
 from homeassistant.helpers.entity import EntityDescription
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-)
 from homeassistant.util import slugify as util_slugify
 
+from custom_components.webastoconnect.base import WebastoBaseEntity
+
 from .api import WebastoConnectUpdateCoordinator
-from .const import ATTR_COORDINATOR, ATTR_DIRECTION, ATTR_SPEED, DOMAIN
+from .const import ATTR_COORDINATOR, DOMAIN
 
 LOGGER = logging.getLogger(__name__)
 
@@ -41,55 +39,26 @@ async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
     async_add_devices(trackers)
 
 
-class WebastoConnectDeviceTracker(
-    CoordinatorEntity[DataUpdateCoordinator[None]], TrackerEntity
-):
+class WebastoConnectDeviceTracker(WebastoBaseEntity, TrackerEntity):
     """A device tracker for Webasto Connect."""
 
     def __init__(
         self,
-        device_id: str,
+        device_id: int,
         description: EntityDescription,
         coordinator: WebastoConnectUpdateCoordinator,
     ) -> None:
         """Initialize a Webasto Connect device tracker."""
-        super().__init__(coordinator)
+        super().__init__(device_id, coordinator, description)
 
-        self.entity_description = description
-        self._config = coordinator.entry
-        self.coordinator = coordinator
-        self._hass = coordinator.hass
-        self._device_id = device_id
-
-        self._attr_name = description.name
-        self._attr_unique_id = util_slugify(
-            f"{self.coordinator.cloud.devices[self._device_id].device_id}_{self._attr_name}"
-        )
-
-        self._prev_lat = self.coordinator.cloud.devices[self._device_id].location["lat"]
-        self._prev_lon = self.coordinator.cloud.devices[self._device_id].location["lon"]
-
-        self._attr_should_poll = False
-
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, self._device_id)},
-            "name": self.coordinator.cloud.devices[self._device_id].name,
-            "model": "ThermoConnect",
-            "manufacturer": "Webasto",
-            "hw_version": self.coordinator.cloud.devices[self._device_id].settings[
-                "hw_version"
-            ],
-            "sw_version": self.coordinator.cloud.devices[self._device_id].settings[
-                "sw_version"
-            ],
-            "configuration_url": "https://my.webastoconnect.com",
-        }
-
-        self.entity_id = device_tracker.ENTITY_ID_FORMAT.format(
+        self.entity_id = device_tracker.ENTITY_ID_FORMAT.format(  # type: ignore
             util_slugify(
-                f"{self.coordinator.cloud.devices[self._device_id].name} {self._attr_name}"
+                f"{self._cloud.devices[self._device_id].name} {self._attr_name}"
             )
         )
+
+        self._prev_lat = self._cloud.devices[self._device_id].location["lat"]  # type: ignore
+        self._prev_lon = self._cloud.devices[self._device_id].location["lon"]  # type: ignore
 
         self._attributes = {}
 
@@ -101,9 +70,7 @@ class WebastoConnectDeviceTracker(
     @property
     def available(self) -> bool:
         """Handle the location states."""
-        if isinstance(
-            self.coordinator.cloud.devices[self._device_id].location, type(None)
-        ):
+        if isinstance(self._cloud.devices[self._device_id].location, type(None)):
             self._attr_available = False
             return False
         else:
@@ -114,17 +81,11 @@ class WebastoConnectDeviceTracker(
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         if (
-            self.coordinator.cloud.devices[self._device_id].location["lat"]
-            != self._prev_lat
-            or self.coordinator.cloud.devices[self._device_id].location["lon"]
-            != self._prev_lon
+            self._cloud.devices[self._device_id].location["lat"] != self._prev_lat  # type: ignore
+            or self._cloud.devices[self._device_id].location["lon"] != self._prev_lon  # type: ignore
         ):
-            self._prev_lat = self.coordinator.cloud.devices[self._device_id].location[
-                "lat"
-            ]
-            self._prev_lon = self.coordinator.cloud.devices[self._device_id].location[
-                "lon"
-            ]
+            self._prev_lat = self._cloud.devices[self._device_id].location["lat"]  # type: ignore
+            self._prev_lon = self._cloud.devices[self._device_id].location["lon"]  # type: ignore
             self._attributes = {}
 
             self.async_write_ha_state()
@@ -132,9 +93,7 @@ class WebastoConnectDeviceTracker(
     @property
     def source_type(self) -> SourceType | str | None:
         """Return the source type, eg gps or router, of the device."""
-        if isinstance(
-            self.coordinator.cloud.devices[self._device_id].location, type(None)
-        ):
+        if isinstance(self._cloud.devices[self._device_id].location, type(None)):
             return None
 
         return SourceType.GPS
@@ -142,19 +101,15 @@ class WebastoConnectDeviceTracker(
     @property
     def latitude(self) -> float | None:
         """Return latitude value of the device."""
-        if isinstance(
-            self.coordinator.cloud.devices[self._device_id].location, type(None)
-        ):
+        if isinstance(self._cloud.devices[self._device_id].location, type(None)):
             return None
 
-        return float(self.coordinator.cloud.devices[self._device_id].location["lat"])
+        return float(self._cloud.devices[self._device_id].location["lat"])  # type: ignore
 
     @property
     def longitude(self) -> float | None:
         """Return longitude value of the device."""
-        if isinstance(
-            self.coordinator.cloud.devices[self._device_id].location, type(None)
-        ):
+        if isinstance(self._cloud.devices[self._device_id].location, type(None)):
             return None
 
-        return float(self.coordinator.cloud.devices[self._device_id].location["lon"])
+        return float(self._cloud.devices[self._device_id].location["lon"])  # type: ignore
