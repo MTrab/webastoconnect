@@ -32,6 +32,9 @@ class WebastoConnectConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
+            if any(entry.data[CONF_EMAIL] == user_input[CONF_EMAIL] for entry in self._async_current_entries()):
+                return self.async_abort(reason="already_configured")
+            
             try:
                 webasto = WebastoConnect(
                     user_input[CONF_EMAIL], user_input[CONF_PASSWORD]
