@@ -1,4 +1,5 @@
 {
+    "title": "Webasto Connect (ThermoConnect)",
     "config": {
         "abort": {
             "already_configured": "Denne konto er allerede tilføjet"
@@ -13,7 +14,6 @@
                     "password": "Kodeord"
                 }
             }
-        },
-        "title": "Webasto Connect (ThermoConnect)"
+        }
     }
 }
