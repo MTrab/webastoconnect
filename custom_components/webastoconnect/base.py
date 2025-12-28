@@ -94,14 +94,13 @@ class WebastoBaseEntity(CoordinatorEntity[DataUpdateCoordinator[None]]):
         self._hass = coordinator.hass
         self._device_id = device_id
         self._cloud: WebastoConnect = coordinator.cloud
-        self._base_name = self.entity_description.name
 
-        # ensure _attr_name is a str or None (EntityDescription may use an UNDEFINED sentinel)
-        self._attr_name = (
-            self.entity_description.name
-            if isinstance(self.entity_description.name, str)
-            else None
-        )
+        if hasattr(self.entity_description, "name_fn") and not isinstance(self.entity_description.name_fn, type(None)):  # type: ignore
+            self._attr_name = self.entity_description.name_fn(  # type: ignore
+                self._cloud.devices[self._device_id]
+            )
+        else:
+            self._attr_name = self.entity_description.name  # type: ignore
 
         self._attr_unique_id = util_slugify(
             f"{self._cloud.devices[self._device_id].device_id}_{self._attr_name}"

@@ -94,13 +94,6 @@ class WebastoConnectSwitch(WebastoBaseEntity, SwitchEntity):
         """Initialize a Webasto Connect switch."""
         super().__init__(device_id, coordinator, description)
 
-        if not isinstance(self.entity_description.name_fn, type(None)):  # type: ignore
-            self._attr_name = self.entity_description.name_fn(  # type: ignore
-                self._cloud.devices[self._device_id]
-            )
-        else:
-            self._attr_name = self.entity_description.name  # type: ignore
-
         self._handle_states()
 
         self.entity_id = switch.ENTITY_ID_FORMAT.format(
