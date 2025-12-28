@@ -15,7 +15,7 @@ from homeassistant.helpers.update_coordinator import (
 from homeassistant.util import slugify as util_slugify
 
 from .api import WebastoConnectUpdateCoordinator
-from .base import WebastoConnectSwitchEntityDescription
+from .base import WebastoBaseEntity, WebastoConnectSwitchEntityDescription
 from .const import ATTR_COORDINATOR, DOMAIN
 
 LOGGER = logging.getLogger(__name__)
@@ -82,61 +82,30 @@ async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
     async_add_devices(switches)
 
 
-class WebastoConnectSwitch(
-    CoordinatorEntity[DataUpdateCoordinator[None]], SwitchEntity
-):
+class WebastoConnectSwitch(WebastoBaseEntity, SwitchEntity):
     """Representation of a Webasto Connect switch."""
 
     def __init__(
         self,
-        device_id: str,
+        device_id: int,
         description: WebastoConnectSwitchEntityDescription,
         coordinator: WebastoConnectUpdateCoordinator,
     ) -> None:
         """Initialize a Webasto Connect switch."""
-        super().__init__(coordinator)
+        super().__init__(device_id, coordinator, description)
 
-        self.entity_description = description
-        self._config = coordinator.entry
-        self.coordinator = coordinator
-        self._hass = coordinator.hass
-        self._base_name = self.entity_description.name
-        self._device_id = device_id
-
-        LOGGER.debug("Switch base name: %s", self._base_name)
-
-        if not isinstance(self.entity_description.name_fn, type(None)):
-            self._attr_name = self.entity_description.name_fn(
-                self.coordinator.cloud.devices[self._device_id]
+        if not isinstance(self.entity_description.name_fn, type(None)):  # type: ignore
+            self._attr_name = self.entity_description.name_fn(  # type: ignore
+                self._cloud.devices[self._device_id]
             )
         else:
-            self._attr_name = self.entity_description.name
-
-        self._attr_unique_id = util_slugify(
-            f"{self.coordinator.cloud.devices[self._device_id].device_id}_{self._attr_name}"
-        )
-
-        self._attr_should_poll = False
-
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, self._device_id)},
-            "name": self.coordinator.cloud.devices[self._device_id].name,
-            "model": "ThermoConnect",
-            "manufacturer": "Webasto",
-            "hw_version": self.coordinator.cloud.devices[self._device_id].settings[
-                "hw_version"
-            ],
-            "sw_version": self.coordinator.cloud.devices[self._device_id].settings[
-                "sw_version"
-            ],
-            "configuration_url": "https://my.webastoconnect.com",
-        }
+            self._attr_name = self.entity_description.name  # type: ignore
 
         self._handle_states()
 
         self.entity_id = switch.ENTITY_ID_FORMAT.format(
             util_slugify(
-                f"{self.coordinator.cloud.devices[self._device_id].name} {self._attr_name}"
+                f"{self._cloud.devices[self._device_id].name} {self._attr_name}"
             )
         )
 
@@ -148,17 +117,17 @@ class WebastoConnectSwitch(
 
     def _handle_states(self) -> None:
         """Handle the switch states."""
-        if not isinstance(self.entity_description.name_fn, type(None)):
-            self._attr_name = self.entity_description.name_fn(
-                self.coordinator.cloud.devices[self._device_id]
+        if not isinstance(self.entity_description.name_fn, type(None)):  # type: ignore
+            self._attr_name = self.entity_description.name_fn(  # type: ignore
+                self._cloud.devices[self._device_id]
             )
 
-        self._attr_is_on = self.entity_description.value_fn(
-            self.coordinator.cloud.devices[self._device_id]
+        self._attr_is_on = self.entity_description.value_fn(  # type: ignore
+            self._cloud.devices[self._device_id]
         )
 
         if self.entity_description.key == "main_output":
-            if self.coordinator.cloud.devices[self._device_id].is_ventilation:
+            if self._cloud.devices[self._device_id].is_ventilation:
                 self._attr_icon = "mdi:fan" if self._attr_is_on else "mdi:fan-off"
             else:
                 self._attr_icon = (
@@ -171,9 +140,9 @@ class WebastoConnectSwitch(
         """Turn on the switch."""
         LOGGER.debug("Turning on %s", self.entity_id)
         await self._hass.async_add_executor_job(
-            self.entity_description.command_fn,
-            self.coordinator.cloud,
-            self.coordinator.cloud.devices[self._device_id],
+            self.entity_description.command_fn,  # type: ignore
+            self._cloud,
+            self._cloud.devices[self._device_id],
             True,
         )
         await self.coordinator.async_refresh()
@@ -182,9 +151,9 @@ class WebastoConnectSwitch(
         """Turn off the switch."""
         LOGGER.debug("Turning off %s", self.entity_id)
         await self._hass.async_add_executor_job(
-            self.entity_description.command_fn,
-            self.coordinator.cloud,
-            self.coordinator.cloud.devices[self._device_id],
+            self.entity_description.command_fn,  # type: ignore
+            self._cloud,
+            self._cloud.devices[self._device_id],
             False,
         )
         await self.coordinator.async_refresh()
