@@ -31,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_migrate_unique_ids(
     hass: HomeAssistant,
-    heater_id: str,
+    heater_id: int,
     heater_name: str,
     entry: ConfigEntry,
 ) -> None:
@@ -41,7 +41,6 @@ async def _async_migrate_unique_ids(
     def _async_migrator(entity_entry: er.RegistryEntry) -> dict[str, Any] | None:
         """Migrate an entity's unique ID."""
         updates = None
-        entry_id = entry.entry_id
         entity_unique_id = entity_entry.unique_id
         entity_name = entity_entry.original_name
 
@@ -107,7 +106,7 @@ async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     for id, device in coordinator.cloud.devices.items():
         LOGGER.debug("Found device: %s", device.name)
         await _async_migrate_unique_ids(
-            hass, str(id), device.name, entry
+            hass, id, device.name, entry
         )  # Migrate unique IDs
         hass.data[DOMAIN][entry.entry_id][ATTR_DEVICES][id] = device
 
