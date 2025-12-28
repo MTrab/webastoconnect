@@ -90,7 +90,7 @@ class WebastoBaseEntity(CoordinatorEntity[DataUpdateCoordinator[None]]):
         super().__init__(coordinator)
 
         self.entity_description = description
-        self._config = coordinator.entry
+        self._config = coordinator.config_entry
         self._hass = coordinator.hass
         self._device_id = device_id
         self._cloud: WebastoConnect = coordinator.cloud
