@@ -63,7 +63,7 @@ class WebastoConnectDeviceTracker(
 
         self._attr_name = description.name
         self._attr_unique_id = util_slugify(
-            f"{self.coordinator.cloud.devices[self._device_id].device_id}_{self._attr_name}"
+            f"{self.coordinator.cloud.devices[self._device_id].device_id}_{self._attr_name}_{self._config.entry_id}"
         )
 
         self._prev_lat = self.coordinator.cloud.devices[self._device_id].location["lat"]

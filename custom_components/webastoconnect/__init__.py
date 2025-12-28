@@ -43,14 +43,25 @@ async def _async_migrate_unique_ids(
         updates = None
         entry_id = entry.entry_id
         entity_unique_id = entity_entry.unique_id
-        entity_name = entity_entry.original_name
+        entity_name = entity_entry.suggested_object_id
 
-        if not str(entity_entry.original_name).startswith(heater_name):
+        if not heater_name.lower() in str(entity_entry.suggested_object_id):
+            LOGGER.debug(
+                "Skipping entity '%s' during migration, heater name '%s' not found in '%s'",
+                entity_entry.entity_id,
+                heater_name.lower(),
+                entity_entry.suggested_object_id,
+            )
             return None
 
         new_unique_id = util_slugify(f"{heater_id}_{entity_name}_{entry_id}")
 
         if entity_unique_id == new_unique_id:
+            LOGGER.debug(
+                "No migration needed for entity '%s' with unique_id '%s'",
+                entity_entry.entity_id,
+                entity_unique_id,
+            )
             return None
 
         LOGGER.debug(
