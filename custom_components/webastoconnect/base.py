@@ -94,6 +94,7 @@ class WebastoBaseEntity(CoordinatorEntity[DataUpdateCoordinator[None]]):
         self._hass = coordinator.hass
         self._device_id = device_id
         self._cloud: WebastoConnect = coordinator.cloud
+        self._base_name = self.entity_description.name
 
         # ensure _attr_name is a str or None (EntityDescription may use an UNDEFINED sentinel)
         self._attr_name = (
