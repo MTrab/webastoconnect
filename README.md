@@ -11,6 +11,7 @@ Webasto <b>DOES NOT</b> provide any public API or documentation of such, so I ca
 
 **[Installation](#installation)**<br/>
 **[Setup](#setup)**<br/>
+**[My heater doesn't show up](#my-heater-doesnt-show-up)**<br/>
 
 # Installation:
 
@@ -36,3 +37,22 @@ Or go to Home Assistant > Settings > Integrations
 Add "Webasto Connect (ThermoConnect)" integration *(If it doesn't show, try CTRL+F5 to force a refresh of the page)*
 
 Enter your Webasto account email and password
+
+# My heater doesn't show up
+
+If your heater doesn't show up in the integration, please make sure it is connected to the e-mail used.
+
+* Login to https://my.webastoconnect.com _USING THE SAME EMAIL AND PASSWORD_ as used in the integration
+* Press `Account`
+
+Make sure your device is listed under devices
+
+If your device is NOT listed under devices:
+
+* Open the ThermoConnect app on your phone
+* Select the missing device (If ypou have more than one connected)
+* Click on the `"My Webasto Connect` button in the lower left
+* Choose `Login with mobile browser`
+* Login with your existing email and password
+
+The device should now be linked to your email account and will show up after a restart of Home Assistant, or after reloading the integration
