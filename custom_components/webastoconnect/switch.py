@@ -103,16 +103,16 @@ class WebastoConnectSwitch(
         self._base_name = self.entity_description.name
         self._device_id = device_id
 
+        self._attr_unique_id = util_slugify(
+            f"{self.coordinator.cloud.devices[self._device_id].device_id}_{self._base_name}_{self._config.entry_id}"
+        )
+
         if not isinstance(self.entity_description.name_fn, type(None)):
             self._attr_name = self.entity_description.name_fn(
                 self.coordinator.cloud.devices[self._device_id]
             )
         else:
             self._attr_name = self.entity_description.name
-
-        self._attr_unique_id = util_slugify(
-            f"{self.coordinator.cloud.devices[self._device_id].device_id}_{self._base_name}_{self._config.entry_id}"
-        )
 
         self._attr_should_poll = False
 
