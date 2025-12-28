@@ -54,7 +54,7 @@ async def _async_migrate_unique_ids(
             )
             return None
 
-        new_unique_id = util_slugify(f"{heater_id}_{entity_name}_{entry_id}")
+        new_unique_id = util_slugify(f"{heater_id}_{entity_name}")
 
         if entity_unique_id == new_unique_id:
             LOGGER.debug(
