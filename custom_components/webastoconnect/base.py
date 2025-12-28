@@ -8,7 +8,16 @@ from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.components.number import NumberEntityDescription
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.components.switch import SwitchEntityDescription
+from homeassistant.helpers.entity import EntityDescription
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
+from homeassistant.util import slugify as util_slugify
 from pywebasto import WebastoConnect, WebastoDevice
+
+from .api import WebastoConnectUpdateCoordinator
+from .const import DOMAIN
 
 
 @dataclass(frozen=True)
@@ -57,3 +66,54 @@ class WebastoConnectNumberEntityDescription(
     value_fn: Callable[[Any], Any]
     set_fn: Optional[Callable[[Any, Any], Any]] = None
     unit_fn: Optional[Callable[["WebastoDevice"], Any]] = None
+
+
+class WebastoBaseEntity(CoordinatorEntity[DataUpdateCoordinator[None]]):
+    """Base Webasto Connect Entity."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+
+    def __init__(
+        self,
+        device_id: int,
+        coordinator: WebastoConnectUpdateCoordinator,
+        description: (
+            WebastoConnectBinarySensorEntityDescription
+            | WebastoConnectSensorEntityDescription
+            | WebastoConnectSwitchEntityDescription
+            | WebastoConnectNumberEntityDescription
+            | EntityDescription
+        ),
+    ) -> None:
+        """Initialize a Webasto Connect Entity."""
+        super().__init__(coordinator)
+
+        self.entity_description = description
+        self._config = coordinator.entry
+        self._hass = coordinator.hass
+        self._device_id = device_id
+        self._cloud: WebastoConnect = coordinator.cloud
+
+        if hasattr(self.entity_description, "name_fn") and not isinstance(self.entity_description.name_fn, type(None)):  # type: ignore
+            self._attr_name = self.entity_description.name_fn(  # type: ignore
+                self._cloud.devices[self._device_id]
+            )
+        else:
+            self._attr_name = self.entity_description.name  # type: ignore
+
+        self._attr_unique_id = util_slugify(
+            f"{self._cloud.devices[self._device_id].device_id}_{self._attr_name}"
+        )
+
+        settings = self._cloud.devices[self._device_id].settings or {}
+
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, str(self._device_id))},
+            "name": self._cloud.devices[self._device_id].name,
+            "model": "ThermoConnect",
+            "manufacturer": "Webasto",
+            "hw_version": settings.get("hw_version", "Unknown"),
+            "sw_version": settings.get("sw_version", "Unknown"),
+            "configuration_url": "https://my.webastoconnect.com",
+        }

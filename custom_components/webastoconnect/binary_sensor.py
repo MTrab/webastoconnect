@@ -8,14 +8,10 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-)
 from homeassistant.util import slugify as util_slugify
 
 from .api import WebastoConnectUpdateCoordinator
-from .base import WebastoConnectBinarySensorEntityDescription
+from .base import WebastoBaseEntity, WebastoConnectBinarySensorEntityDescription
 from .const import ATTR_COORDINATOR, DOMAIN
 
 LOGGER = logging.getLogger(__name__)
@@ -54,69 +50,44 @@ async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
 
 
 class WebastoConnectBinarySensor(
-    CoordinatorEntity[DataUpdateCoordinator[None]], BinarySensorEntity
+    WebastoBaseEntity,
+    BinarySensorEntity,
 ):
     """Representation of a Webasto Connect Binary Sensor."""
 
     def __init__(
         self,
-        device_id: str,
+        device_id: int,
         description: WebastoConnectBinarySensorEntityDescription,
         coordinator: WebastoConnectUpdateCoordinator,
     ) -> None:
         """Initialize a Webasto Connect Binary Sensor."""
-        super().__init__(coordinator)
-
-        self.entity_description = description
-        self.coordinator = coordinator
-        self._config = coordinator.entry
-        self._hass = coordinator.hass
-        self._device_id = device_id
-
-        self._attr_name = self.entity_description.name
-        self._attr_unique_id = util_slugify(
-            f"{self.coordinator.cloud.devices[self._device_id].device_id}_{self._attr_name}"
-        )
-        self._attr_should_poll = False
-
-        self._attr_is_on = self.entity_description.value_fn(
-            self.coordinator.cloud.devices[self._device_id]
-        )
-        self._attr_icon = (
-            self.entity_description.icon_on
-            if self._attr_is_on
-            else self.entity_description.icon_off
-        )
-
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, self._device_id)},
-            "name": self.coordinator.cloud.devices[self._device_id].name,
-            "model": "ThermoConnect",
-            "manufacturer": "Webasto",
-            "hw_version": self.coordinator.cloud.devices[self._device_id].settings[
-                "hw_version"
-            ],
-            "sw_version": self.coordinator.cloud.devices[self._device_id].settings[
-                "sw_version"
-            ],
-            "configuration_url": "https://my.webastoconnect.com",
-        }
+        super().__init__(device_id, coordinator, description)
 
         self.entity_id = binary_sensor.ENTITY_ID_FORMAT.format(
             util_slugify(
-                f"{self.coordinator.cloud.devices[self._device_id].name} {self._attr_name}"
+                f"{self._cloud.devices[self._device_id].name} {self._attr_name}"
             )
+        )
+
+        self._attr_is_on = self.entity_description.value_fn( # type: ignore
+            self._cloud.devices[self._device_id]
+        )
+        self._attr_icon = (
+            self.entity_description.icon_on  # type: ignore
+            if self._attr_is_on
+            else self.entity_description.icon_off  # type: ignore
         )
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self._attr_is_on = self.entity_description.value_fn(
-            self.coordinator.cloud.devices[self._device_id]
+        self._attr_is_on = self.entity_description.value_fn(  # type: ignore
+            self._cloud.devices[self._device_id]
         )
         self._attr_icon = (
-            self.entity_description.icon_on
+            self.entity_description.icon_on  # type: ignore
             if self._attr_is_on
-            else self.entity_description.icon_off
+            else self.entity_description.icon_off  # type: ignore
         )
         self.async_write_ha_state()
