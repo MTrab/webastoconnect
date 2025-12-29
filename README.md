@@ -50,7 +50,7 @@ Make sure your device is listed under devices
 If your device is NOT listed under devices:
 
 * Open the ThermoConnect app on your phone
-* Select the missing device (If ypou have more than one connected)
+* Select the missing device (If you have more than one connected)
 * Click on the `"My Webasto Connect` button in the lower left
 * Choose `Login with mobile browser`
 * Login with your existing email and password
