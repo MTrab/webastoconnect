@@ -6,6 +6,18 @@
             "type": "shell",
             "command": "scripts/develop",
             "problemMatcher": []
+        },
+        {
+            "label": "Upgrade Home Assistant to latest version",
+            "type": "shell",
+            "command": "scripts/upgrade-dev",
+            "problemMatcher": []
+        },
+        {
+            "label": "Install a specific version of Home Assistant",
+            "type": "shell",
+            "command": "scripts/upgrade-version",
+            "problemMatcher": []
         }
     ]
 }
