@@ -8,7 +8,8 @@
 	"portsAttributes": {
 		"8123": {
 			"label": "Home Assistant - Webasto Connect",
-			"onAutoForward": "notify"
+			"onAutoForward": "notify",
+      		"protocol": "http"
 		}
 	},
 	"customizations": {
@@ -19,7 +20,8 @@
 				"ryanluker.vscode-coverage-gutters",
 				"ms-python.vscode-pylance",
 				"ms-python.isort",
-				"ms-python.black-formatter"
+				"ms-python.black-formatter",
+				"GitHub.copilot"
 			],
 			"settings": {
 				"files.eol": "\n",
@@ -40,5 +42,8 @@
 	"remoteUser": "root",
 	"features": {
 		"ghcr.io/devcontainers/features/rust:1": {}
-	}
+	},
+	"mounts": [
+		"source=${localWorkspaceFolder}/config,target=/config,type=bind,consistency=cached"
+	]
 }
