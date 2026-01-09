@@ -29,6 +29,7 @@ SENSORS = [
         value_fn=lambda webasto: webasto.temperature,
         icon="mdi:thermometer",
         unit_fn=lambda webasto: webasto.temperature_unit,
+        suggested_display_precision=0,
     ),
     WebastoConnectSensorEntityDescription(
         key="battery_voltage",
@@ -39,6 +40,7 @@ SENSORS = [
         native_unit_of_measurement="V",
         value_fn=lambda webasto: webasto.voltage,
         icon="mdi:car-battery",
+        suggested_display_precision=1,
     ),
     WebastoConnectSensorEntityDescription(
         key="subscription_expiration",
