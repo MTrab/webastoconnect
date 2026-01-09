@@ -128,8 +128,7 @@ class WebastoConnectSwitch(WebastoBaseEntity, SwitchEntity):
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on the switch."""
         LOGGER.debug("Turning on %s", self.entity_id)
-        await self._hass.async_add_executor_job(
-            self.entity_description.command_fn,  # type: ignore
+        await self.entity_description.command_fn(  # type: ignore
             self._cloud,
             self._cloud.devices[self._device_id],
             True,
@@ -139,8 +138,7 @@ class WebastoConnectSwitch(WebastoBaseEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the switch."""
         LOGGER.debug("Turning off %s", self.entity_id)
-        await self._hass.async_add_executor_job(
-            self.entity_description.command_fn,  # type: ignore
+        await self.entity_description.command_fn(  # type: ignore
             self._cloud,
             self._cloud.devices[self._device_id],
             False,

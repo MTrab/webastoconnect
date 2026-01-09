@@ -90,7 +90,7 @@ async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator = WebastoConnectUpdateCoordinator(hass, entry)
     try:
-        await hass.async_add_executor_job(coordinator.cloud.connect)
+        await coordinator.cloud.connect()
         LOGGER.debug(
             "Connected to Webasto API for %s",
             entry.options.get(CONF_EMAIL, entry.data.get(CONF_EMAIL)),
