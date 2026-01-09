@@ -14,5 +14,5 @@
     "requirements": [
         "pywebasto==2.0.0"
     ],
-    "version": "0.3.0b2"
+    "version": "1.0.0"
 }
