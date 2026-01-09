@@ -53,7 +53,7 @@ class WebastoConnectConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 webasto = WebastoConnect(
                     user_input[CONF_EMAIL], user_input[CONF_PASSWORD]
                 )
-                await self.hass.async_add_executor_job(webasto.connect)
+                await webasto.connect()
                 LOGGER.debug("Authorization OK")
             except UnauthorizedException:
                 LOGGER.debug("Authorization ERROR")
@@ -91,7 +91,7 @@ class WebastoConnectConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 webasto = WebastoConnect(
                     user_input[CONF_EMAIL], user_input[CONF_PASSWORD]
                 )
-                await self.hass.async_add_executor_job(webasto.connect)
+                await webasto.connect()
                 LOGGER.debug("Re-authorization OK")
             except UnauthorizedException:
                 LOGGER.debug("Re-authorization ERROR")
@@ -143,7 +143,7 @@ class WebastoConnectOptionsFlow(config_entries.OptionsFlow):
                 webasto = WebastoConnect(
                     user_input[CONF_EMAIL], user_input[CONF_PASSWORD]
                 )
-                await self.hass.async_add_executor_job(webasto.connect)
+                await webasto.connect()
                 LOGGER.debug("Authorization OK")
             except UnauthorizedException:
                 LOGGER.debug("Authorization ERROR")

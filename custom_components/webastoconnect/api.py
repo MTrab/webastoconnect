@@ -51,7 +51,7 @@ class WebastoConnectUpdateCoordinator(DataUpdateCoordinator[None]):
         """Handle data update request from the coordinator."""
         LOGGER.debug("Data update called")
         try:
-            await self.hass.async_add_executor_job(self.cloud.update)
+            await self.cloud.update()
         except Exception as ex:
             raise Exception(  # pylint: disable=broad-exception-raised
                 f"Failed communicating with the API: {ex}"
