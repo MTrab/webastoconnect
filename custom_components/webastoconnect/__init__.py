@@ -6,11 +6,11 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed,ConfigEntryNotReady
 from homeassistant.helpers import entity_registry as er
 from homeassistant.loader import async_get_integration
 from homeassistant.util import slugify as util_slugify
-from pywebasto.exceptions import UnauthorizedException
+from pywebasto.exceptions import UnauthorizedException,InvalidRequestException
 
 from .api import WebastoConnectUpdateCoordinator
 from .const import ATTR_COORDINATOR, ATTR_DEVICES, DOMAIN, PLATFORMS, STARTUP
@@ -97,6 +97,8 @@ async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
     except UnauthorizedException:
         raise ConfigEntryAuthFailed("Invalid email or password specified") from None
+    except InvalidRequestException:
+        raise ConfigEntryNotReady("Error connecting to the API - try again later")
 
     hass.data[DOMAIN][entry.entry_id] = {
         ATTR_COORDINATOR: coordinator,
