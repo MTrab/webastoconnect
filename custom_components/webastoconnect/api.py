@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pywebasto import WebastoConnect
 
 from .const import DOMAIN
@@ -53,6 +53,4 @@ class WebastoConnectUpdateCoordinator(DataUpdateCoordinator[None]):
         try:
             await self.cloud.update()
         except Exception as ex:
-            raise Exception(  # pylint: disable=broad-exception-raised
-                f"Failed communicating with the API: {ex}"
-            ) from ex
+            raise UpdateFailed(retry_after=300) from ex
