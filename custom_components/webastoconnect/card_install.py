@@ -31,6 +31,7 @@ def read_card_version(path: Path) -> str | None:
 def should_install_card(
     source_version: str | None,
     installed_version: str | None,
+    source_entry_file: Path,
     installed_entry_file: Path,
 ) -> bool:
     """Determine whether bundled card assets should be installed/updated."""
@@ -38,7 +39,14 @@ def should_install_card(
         return False
     if not installed_entry_file.exists():
         return True
-    return installed_version != source_version
+    if installed_version != source_version:
+        return True
+
+    # Reinstall when bundle content changed but version marker was not bumped.
+    try:
+        return source_entry_file.read_bytes() != installed_entry_file.read_bytes()
+    except OSError:
+        return True
 
 
 def ensure_card_installed(integration_path: Path, www_path: Path) -> tuple[bool, str | None]:
@@ -54,7 +62,12 @@ def ensure_card_installed(integration_path: Path, www_path: Path) -> tuple[bool,
     target_entry = target_dir / CARD_FILENAME
     installed_version = read_card_version(target_entry)
 
-    if not should_install_card(source_version, installed_version, target_entry):
+    if not should_install_card(
+        source_version,
+        installed_version,
+        source_entry,
+        target_entry,
+    ):
         return False, source_version
 
     target_dir.mkdir(parents=True, exist_ok=True)

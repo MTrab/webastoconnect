@@ -18,7 +18,3 @@ battery_entity: sensor.<your_battery_entity>
 location_entity: sensor.<your_geocoded_location_entity_or_device_tracker>
 
 # Optional labels:
-# title_geo_fence: Geo-fence
-# title_mode: Modus
-# title_timers: Timere
-# title_map: Kort

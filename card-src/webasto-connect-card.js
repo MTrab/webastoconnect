@@ -51,23 +51,44 @@ class WebastoConnectCard extends HTMLElement {
     return entityId ? this._hass?.states?.[entityId] : undefined;
   }
 
-  _computeLabel(endEntity) {
+  _parseEndDate(value) {
+    if (value === null || value === undefined || value === "") {
+      return null;
+    }
+
+    // Accept both ISO datetime and Unix timestamp (seconds or milliseconds).
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) {
+      const millis = numeric < 1e12 ? numeric * 1000 : numeric;
+      const tsDate = new Date(millis);
+      return Number.isNaN(tsDate.getTime()) ? null : tsDate;
+    }
+
+    const date = new Date(String(value));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  _computeLabel(mainEntity, endEntity) {
+    if (!mainEntity || mainEntity.state !== "on") {
+      return localize(this._hass, "card.ui.inactive");
+    }
+
     if (!endEntity || !endEntity.state || endEntity.state === "unknown" || endEntity.state === "unavailable") {
-      return localize(this._hass, "card.ui.inactive");
+      return localize(this._hass, "card.ui.active");
     }
 
-    const end = new Date(endEntity.state);
-    if (Number.isNaN(end.getTime())) {
-      return localize(this._hass, "card.ui.inactive");
+    const end = this._parseEndDate(endEntity.state);
+    if (!end) {
+      return localize(this._hass, "card.ui.active");
     }
 
-    const leftMinutes = Math.round((end.getTime() - Date.now()) / 60000);
+    const leftMinutes = Math.ceil((end.getTime() - Date.now()) / 60000);
     if (leftMinutes <= 0) {
       return localize(this._hass, "card.ui.ending_now");
     }
-    return localize(this._hass, "card.ui.minutes_left", {
-      minutes: leftMinutes,
-    });
+    const hours = Math.floor(leftMinutes / 60);
+    const minutes = leftMinutes % 60;
+    return `${hours}:${String(minutes).padStart(2, "0")} ${localize(this._hass, "card.ui.left")}`;
   }
 
   _computeOutputName(mainOutputState) {
@@ -138,20 +159,19 @@ class WebastoConnectCard extends HTMLElement {
     const ringColor = isOn ? "#d33131" : "#c5cfdf";
     const outputName = this._computeOutputName(main);
     const label = isMainAvailable
-      ? this._computeLabel(end)
+      ? this._computeLabel(main, end)
       : localize(this._hass, "card.ui.main_output_missing");
     const tempText = this._stateWithUnit(temp);
     const batteryText = this._stateWithUnit(battery);
     const locationText = this._locationText(location);
-    const icon = this._config.center_icon || "mdi:car-defrost-rear";
-    const titleGeoFence =
-      this._config.title_geo_fence || localize(this._hass, "card.ui.geo_fence");
-    const titleMode =
-      this._config.title_mode || localize(this._hass, "card.ui.mode");
-    const titleTimers =
-      this._config.title_timers || localize(this._hass, "card.ui.timers");
-    const titleMap =
-      this._config.title_map || localize(this._hass, "card.ui.map");
+    const icon =
+      this._config.center_icon ||
+      main?.attributes?.icon ||
+      "mdi:car-defrost-rear";
+    const titleGeoFence = localize(this._hass, "card.ui.geo_fence");
+    const titleMode = localize(this._hass, "card.ui.mode");
+    const titleTimers = localize(this._hass, "card.ui.timers");
+    const titleMap = localize(this._hass, "card.ui.map");
     const toggleLabel = localize(this._hass, "card.ui.toggle_output");
 
     this.shadowRoot.innerHTML = `
@@ -192,6 +212,23 @@ class WebastoConnectCard extends HTMLElement {
         .q.tr { right: 0; top: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
         .q.bl { left: 0; bottom: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
         .q.br { right: 0; bottom: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
+        .divider-v, .divider-h {
+          position: absolute;
+          background: #e7edf8;
+          pointer-events: none;
+        }
+        .divider-v {
+          left: calc(50% - 8px);
+          top: 0;
+          width: 16px;
+          height: 100%;
+        }
+        .divider-h {
+          left: 0;
+          top: calc(50% - 8px);
+          width: 100%;
+          height: 16px;
+        }
         .center-wrap {
           position: absolute;
           left: 50%;
@@ -266,6 +303,8 @@ class WebastoConnectCard extends HTMLElement {
           <div class="q tr">${titleMode}</div>
           <div class="q bl">${titleTimers}</div>
           <div class="q br">${titleMap}</div>
+          <div class="divider-v"></div>
+          <div class="divider-h"></div>
           <div class="center-wrap" id="center-toggle" role="button" tabindex="0" aria-label="${toggleLabel}">
             <ha-icon class="icon" icon="${icon}" style="--mdc-icon-size: 96px;"></ha-icon>
             <div class="name">${outputName}</div>
@@ -307,6 +346,10 @@ class WebastoConnectCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    if (!this._suggestionsLoaded) {
+      this._suggestionsLoaded = true;
+      this._loadSuggestions();
+    }
     this._render();
   }
 
@@ -315,6 +358,38 @@ class WebastoConnectCardEditor extends HTMLElement {
       this.attachShadow({ mode: "open" });
     }
     this._render();
+  }
+
+  async _loadSuggestions() {
+    if (!this._hass) {
+      return;
+    }
+
+    try {
+      const registry = await this._hass.callWS({
+        type: "config/entity_registry/list",
+      });
+      const webastoEntities = registry
+        .filter((entry) => entry.platform === "webastoconnect" && !entry.hidden_by)
+        .map((entry) => entry.entity_id);
+
+      this._entitySuggestions = [...new Set(webastoEntities)].sort();
+    } catch (_err) {
+      const fallback = Object.keys(this._hass.states || {}).filter((entityId) =>
+        entityId.includes("webasto")
+      );
+      this._entitySuggestions = [...new Set(fallback)].sort();
+    }
+
+    this._render();
+  }
+
+  _datalistOptions(domains) {
+    const suggestions = this._entitySuggestions || [];
+    return suggestions
+      .filter((entityId) => domains.includes(entityId.split(".")[0]))
+      .map((entityId) => `<option value="${escapeAttr(entityId)}"></option>`)
+      .join("");
   }
 
   _handleInput(ev) {
@@ -373,42 +448,39 @@ class WebastoConnectCardEditor extends HTMLElement {
           border-radius: 8px;
           padding: 8px 10px;
         }
+        .hint {
+          margin-top: 2px;
+          font-size: 12px;
+          color: var(--secondary-text-color);
+        }
       </style>
       <div class="grid">
         <label>Main output entity
-          <input data-field="main_output_entity" value="${escapeAttr(cfg.main_output_entity)}" placeholder="switch.webasto_main_output" />
+          <input data-field="main_output_entity" list="webasto-options-switch" value="${escapeAttr(cfg.main_output_entity)}" placeholder="switch.webasto_main_output" />
         </label>
         <label>Ventilation mode entity
-          <input data-field="ventilation_mode_entity" value="${escapeAttr(cfg.ventilation_mode_entity)}" placeholder="switch.webasto_ventilation_mode" />
+          <input data-field="ventilation_mode_entity" list="webasto-options-switch" value="${escapeAttr(cfg.ventilation_mode_entity)}" placeholder="switch.webasto_ventilation_mode" />
         </label>
         <label>End-time sensor entity
-          <input data-field="end_time_entity" value="${escapeAttr(cfg.end_time_entity)}" placeholder="sensor.webasto_main_output_end_time" />
+          <input data-field="end_time_entity" list="webasto-options-sensor" value="${escapeAttr(cfg.end_time_entity)}" placeholder="sensor.webasto_main_output_end_time" />
         </label>
         <label>Temperature entity
-          <input data-field="temperature_entity" value="${escapeAttr(cfg.temperature_entity)}" placeholder="sensor.webasto_temperature" />
+          <input data-field="temperature_entity" list="webasto-options-sensor" value="${escapeAttr(cfg.temperature_entity)}" placeholder="sensor.webasto_temperature" />
         </label>
         <label>Battery entity
-          <input data-field="battery_entity" value="${escapeAttr(cfg.battery_entity)}" placeholder="sensor.webasto_battery_voltage" />
+          <input data-field="battery_entity" list="webasto-options-sensor" value="${escapeAttr(cfg.battery_entity)}" placeholder="sensor.webasto_battery_voltage" />
         </label>
         <label>Location entity
-          <input data-field="location_entity" value="${escapeAttr(cfg.location_entity)}" placeholder="device_tracker.webasto_location" />
+          <input data-field="location_entity" list="webasto-options-location" value="${escapeAttr(cfg.location_entity)}" placeholder="device_tracker.webasto_location" />
         </label>
         <label>Center icon
           <input data-field="center_icon" value="${escapeAttr(cfg.center_icon)}" placeholder="mdi:car-defrost-rear" />
         </label>
-        <label>Geo-fence title (optional)
-          <input data-field="title_geo_fence" value="${escapeAttr(cfg.title_geo_fence)}" />
-        </label>
-        <label>Mode title (optional)
-          <input data-field="title_mode" value="${escapeAttr(cfg.title_mode)}" />
-        </label>
-        <label>Timers title (optional)
-          <input data-field="title_timers" value="${escapeAttr(cfg.title_timers)}" />
-        </label>
-        <label>Map title (optional)
-          <input data-field="title_map" value="${escapeAttr(cfg.title_map)}" />
-        </label>
+        <div class="hint">Suggestions are limited to entities from the Webasto Connect integration.</div>
       </div>
+      <datalist id="webasto-options-switch">${this._datalistOptions(["switch"])}</datalist>
+      <datalist id="webasto-options-sensor">${this._datalistOptions(["sensor"])}</datalist>
+      <datalist id="webasto-options-location">${this._datalistOptions(["sensor", "device_tracker"])}</datalist>
     `;
 
     this.shadowRoot.querySelectorAll("input").forEach((input) => {

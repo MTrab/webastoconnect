@@ -39,15 +39,20 @@ def test_read_card_version_from_js_marker(tmp_path: Path) -> None:
 
 
 def test_should_install_card_logic(tmp_path: Path) -> None:
-    """Install should happen when file missing or version differs."""
+    """Install should happen when file missing, version differs, or content changes."""
+    source = tmp_path / "source-webasto-connect-card.js"
     target = tmp_path / "webasto-connect-card.js"
+    source.write_text("same-content", encoding="utf-8")
 
-    assert should_install_card("0.1.0", None, target) is True
+    assert should_install_card("0.1.0", None, source, target) is True
 
-    target.write_text("x", encoding="utf-8")
-    assert should_install_card("0.1.0", "0.1.0", target) is False
-    assert should_install_card("0.1.0", "0.0.9", target) is True
-    assert should_install_card(None, "0.1.0", target) is False
+    target.write_text("same-content", encoding="utf-8")
+    assert should_install_card("0.1.0", "0.1.0", source, target) is False
+    assert should_install_card("0.1.0", "0.0.9", source, target) is True
+    assert should_install_card(None, "0.1.0", source, target) is False
+
+    target.write_text("changed-content", encoding="utf-8")
+    assert should_install_card("0.1.0", "0.1.0", source, target) is True
 
 
 def test_ensure_card_installed_copies_bundle(tmp_path: Path) -> None:
