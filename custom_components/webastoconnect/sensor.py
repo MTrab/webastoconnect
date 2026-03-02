@@ -96,6 +96,7 @@ SENSORS = [
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=None,
         device_class=SensorDeviceClass.TIMESTAMP,
+        entity_registry_enabled_default=False,
         value_fn=_main_output_end_time,
         name_fn=_main_output_end_name,
         icon="mdi:timer-outline",
