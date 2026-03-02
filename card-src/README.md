@@ -25,6 +25,9 @@ cd card-src
 npm run build:watch
 ```
 
+Card version marker (`__WEBASTO_CONNECT_CARD_VERSION__`) is injected automatically
+from `card-src/package.json` during build.
+
 ## Install in Home Assistant
 The integration auto-installs card assets on load/update to:
 - `config/www/webastoconnect/webasto-connect-card.js`

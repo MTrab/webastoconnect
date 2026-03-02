@@ -1,5 +1,3 @@
-globalThis.__WEBASTO_CONNECT_CARD_VERSION__ = "0.1.0";
-
 import { localize } from "./localize/localize.js";
 
 class WebastoConnectCard extends HTMLElement {
