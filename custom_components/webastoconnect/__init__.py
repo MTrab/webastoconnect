@@ -139,7 +139,7 @@ async def _async_setup(
             card_version,
             CARD_FILENAME,
         )
-    await _async_ensure_lovelace_card_resource(hass)
+    await _async_ensure_lovelace_card_resource(hass, card_version)
 
     coordinator = WebastoConnectUpdateCoordinator(hass, entry)
     try:
@@ -167,9 +167,16 @@ async def _async_setup(
     return coordinator
 
 
-async def _async_ensure_lovelace_card_resource(hass: HomeAssistant) -> None:
+async def _async_ensure_lovelace_card_resource(
+    hass: HomeAssistant, card_version: str | None
+) -> None:
     """Ensure the Webasto Connect card resource exists in Lovelace storage mode."""
-    resource_url = f"/local/{CARD_WWW_SUBDIR}/{CARD_FILENAME}"
+    resource_base_url = f"/local/{CARD_WWW_SUBDIR}/{CARD_FILENAME}"
+    resource_url = (
+        f"{resource_base_url}?v={card_version}"
+        if card_version
+        else resource_base_url
+    )
 
     if (lovelace_data := hass.data.get(LOVELACE_DATA)) is None:
         LOGGER.debug(
@@ -187,17 +194,20 @@ async def _async_ensure_lovelace_card_resource(hass: HomeAssistant) -> None:
 
     resources = lovelace_data.resources
     for resource in resources.async_items() or []:
-        if resource.get(CONF_URL) != resource_url:
+        existing_url = resource.get(CONF_URL) or ""
+        existing_base_url = existing_url.split("?", 1)[0]
+        if existing_base_url != resource_base_url:
             continue
 
+        update_data: dict[str, str] = {}
+        if existing_url != resource_url:
+            update_data[CONF_URL] = resource_url
         if resource.get(CONF_TYPE) != "module":
-            await resources.async_update_item(
-                resource["id"],
-                {CONF_RESOURCE_TYPE_WS: "module"},
-            )
-            LOGGER.info(
-                "Updated Lovelace resource type to module for %s", resource_url
-            )
+            update_data[CONF_RESOURCE_TYPE_WS] = "module"
+
+        if update_data:
+            await resources.async_update_item(resource["id"], update_data)
+            LOGGER.info("Updated Lovelace resource to %s", resource_url)
         else:
             LOGGER.debug("Lovelace resource already present for %s", resource_url)
         return
