@@ -5,7 +5,7 @@
 # 2) Assets are auto-installed by the integration on load/update.
 #    Manual copy (optional):
 #    mkdir -p config/www/webastoconnect
-#    cp -r custom_components/webastoconnect/card/* config/www/webastoconnect/
+#    cp custom_components/webastoconnect/card/webasto-connect-card.js config/www/webastoconnect/webasto-connect-card.js
 #
 # 3) Use this card config:
 

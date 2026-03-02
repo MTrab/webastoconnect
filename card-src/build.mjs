@@ -9,7 +9,7 @@ const buildOptions = {
   target: ["es2020"],
   minify: true,
   sourcemap: false,
-  outdir: "dist",
+  outfile: "../custom_components/webastoconnect/card/webasto-connect-card.js",
   logLevel: "info",
   loader: {
     ".json": "json",

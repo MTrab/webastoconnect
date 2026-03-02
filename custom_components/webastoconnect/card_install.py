@@ -11,8 +11,6 @@ from .const import (
     CARD_WWW_SUBDIR,
 )
 
-CARD_ASSET_DIRECTORIES = ("localize", "translations")
-
 
 def read_version_file(path: Path) -> str | None:
     """Read a version marker file, returning None when missing/empty."""
@@ -57,11 +55,6 @@ def ensure_card_installed(integration_path: Path, www_path: Path) -> tuple[bool,
     target_dir.mkdir(parents=True, exist_ok=True)
 
     shutil.copy2(source_entry, target_entry)
-
-    for dirname in CARD_ASSET_DIRECTORIES:
-        source_assets = source_dir / dirname
-        if source_assets.is_dir():
-            shutil.copytree(source_assets, target_dir / dirname, dirs_exist_ok=True)
 
     target_version_file.write_text(source_version, encoding="utf-8")
     return True, source_version

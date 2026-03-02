@@ -1,78 +1,7 @@
-const WEBASTO_CONNECT_CARD_TRANSLATIONS = {
-  da: {
-    card: {
-      ui: {
-        geo_fence: "Geo-fence",
-        mode: "Modus",
-        timers: "Timere",
-        map: "Kort",
-        inactive: "Ikke aktiv",
-        ending_now: "Slutter nu",
-        minutes_left: "{minutes} minutter tilbage",
-        output: "Output",
-        toggle_output: "Skift output",
-      },
-    },
-  },
-  en: {
-    card: {
-      ui: {
-        geo_fence: "Geo-fence",
-        mode: "Mode",
-        timers: "Timers",
-        map: "Map",
-        inactive: "Inactive",
-        ending_now: "Ending now",
-        minutes_left: "{minutes} minutes left",
-        output: "Output",
-        toggle_output: "Toggle output",
-      },
-    },
-  },
-};
-
-function getNestedTranslation(obj, path) {
-  if (!obj) return undefined;
-
-  const keys = path.split(".");
-  let result = obj;
-
-  for (const key of keys) {
-    if (result === undefined || result === null || typeof result !== "object") {
-      return undefined;
-    }
-    result = result[key];
-  }
-
-  return typeof result === "string" ? result : undefined;
-}
-
-function resolveLanguage(language) {
-  const raw = String(language || "en").toLowerCase();
-  if (WEBASTO_CONNECT_CARD_TRANSLATIONS[raw]) return raw;
-
-  const short = raw.split("-")[0];
-  if (WEBASTO_CONNECT_CARD_TRANSLATIONS[short]) return short;
-
-  return "en";
-}
-
-function localize(hass, key, vars = {}) {
-  const lang = resolveLanguage(hass?.language);
-
-  let translated =
-    getNestedTranslation(WEBASTO_CONNECT_CARD_TRANSLATIONS[lang], key) ??
-    getNestedTranslation(WEBASTO_CONNECT_CARD_TRANSLATIONS.en, key) ??
-    key;
-
-  Object.entries(vars).forEach(([name, value]) => {
-    translated = translated.replace(`{${name}}`, String(value));
-  });
-
-  return translated;
-}
+import { localize } from "./localize/localize.js";
 
 class WebastoConnectCard extends HTMLElement {
+
   setConfig(config) {
     if (!config.main_output_entity) {
       throw new Error("Missing required config: main_output_entity");
@@ -101,12 +30,7 @@ class WebastoConnectCard extends HTMLElement {
   }
 
   _computeLabel(endEntity) {
-    if (
-      !endEntity ||
-      !endEntity.state ||
-      endEntity.state === "unknown" ||
-      endEntity.state === "unavailable"
-    ) {
+    if (!endEntity || !endEntity.state || endEntity.state === "unknown" || endEntity.state === "unavailable") {
       return localize(this._hass, "card.ui.inactive");
     }
 
@@ -156,10 +80,12 @@ class WebastoConnectCard extends HTMLElement {
     const icon = this._config.center_icon || "mdi:car-defrost-rear";
     const titleGeoFence =
       this._config.title_geo_fence || localize(this._hass, "card.ui.geo_fence");
-    const titleMode = this._config.title_mode || localize(this._hass, "card.ui.mode");
+    const titleMode =
+      this._config.title_mode || localize(this._hass, "card.ui.mode");
     const titleTimers =
       this._config.title_timers || localize(this._hass, "card.ui.timers");
-    const titleMap = this._config.title_map || localize(this._hass, "card.ui.map");
+    const titleMap =
+      this._config.title_map || localize(this._hass, "card.ui.map");
     const toggleLabel = localize(this._hass, "card.ui.toggle_output");
 
     this.shadowRoot.innerHTML = `
@@ -184,8 +110,13 @@ class WebastoConnectCard extends HTMLElement {
           padding: 16px;
           box-sizing: border-box;
         }
-        .q.tr, .q.br { justify-content: flex-end; text-align: right; }
-        .q.bl, .q.br { align-items: flex-end; }
+        .q.tr, .q.br {
+          justify-content: flex-end;
+          text-align: right;
+        }
+        .q.bl, .q.br {
+          align-items: flex-end;
+        }
         .q.tl { left: 0; top: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
         .q.tr { right: 0; top: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
         .q.bl { left: 0; bottom: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
@@ -209,8 +140,16 @@ class WebastoConnectCard extends HTMLElement {
           user-select: none;
           transition: border-color 150ms ease;
         }
-        .icon { color: #2a4677; margin-bottom: 10px; }
-        .name { color: #20334d; font-size: 36px; line-height: 1.1; font-weight: 500; }
+        .icon {
+          color: #2a4677;
+          margin-bottom: 10px;
+        }
+        .name {
+          color: #20334d;
+          font-size: 36px;
+          line-height: 1.1;
+          font-weight: 500;
+        }
         .label {
           color: #20334d;
           font-size: 24px;
