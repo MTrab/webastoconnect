@@ -1,4 +1,4 @@
-import { ensureTranslations, localize } from "./localize/localize.js";
+import { localize } from "./localize/localize.js";
 
 class WebastoConnectCard extends HTMLElement {
 
@@ -63,12 +63,10 @@ class WebastoConnectCard extends HTMLElement {
     });
   }
 
-  async _render() {
+  _render() {
     if (!this.shadowRoot || !this._config || !this._hass) {
       return;
     }
-
-    await ensureTranslations(this._hass);
 
     const main = this._getState(this._config.main_output_entity);
     const vent = this._getState(this._config.ventilation_mode_entity);
