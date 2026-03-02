@@ -5,7 +5,7 @@ Custom Home Assistant Lovelace card.
 ## Files
 - `webasto-connect-card.js`: custom card module (add as Lovelace resource)
 - `localize/localize.js`: translation lookup and language fallback
-- `translations/*.js`: per-language strings
+- `translations/*.json`: per-language strings
 - `webasto_connect_card.yaml`: example card configuration
 
 ## Install in Home Assistant

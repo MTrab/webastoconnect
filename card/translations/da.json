@@ -1,0 +1,16 @@
+{
+  "card": {
+    "ui": {
+      "geo_fence": "Geo-fence",
+      "mode": "Modus",
+      "timers": "Timere",
+      "map": "Kort",
+      "inactive": "Ikke aktiv",
+      "ending_now": "Slutter nu",
+      "minutes_left": "{minutes} minutter tilbage",
+      "heater": "Heater",
+      "ventilation": "Ventilation",
+      "toggle_output": "Skift output"
+    }
+  }
+}
