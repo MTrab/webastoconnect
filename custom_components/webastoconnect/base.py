@@ -43,6 +43,7 @@ class WebastoConnectSensorEntityDescription(SensorEntityDescription):
 
     value_fn: Callable[[Any], Any | None] | None = None
     unit_fn: Callable[[Any], Any] | None = None
+    name_fn: Callable[[Any], str | bool] | None = None
 
 
 @dataclass(frozen=True)

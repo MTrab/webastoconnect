@@ -49,6 +49,14 @@ def _main_output_end_time(webasto) -> datetime | None:
 
     return None
 
+
+def _main_output_end_name(webasto) -> str:
+    """Return a mode-aware name for main output end-time sensor."""
+    output_name = getattr(webasto, "output_main_name", None)
+    if isinstance(output_name, str) and output_name.strip():
+        return f"{output_name} ends"
+    return "Output ends"
+
 SENSORS = [
     WebastoConnectSensorEntityDescription(
         key="temperature",
@@ -84,11 +92,12 @@ SENSORS = [
     ),
     WebastoConnectSensorEntityDescription(
         key="main_output_end_time",
-        name="Main Output Ends At",
+        name="Output ends",
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=None,
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=_main_output_end_time,
+        name_fn=_main_output_end_name,
         icon="mdi:timer-end",
     ),
 ]
@@ -143,6 +152,10 @@ class WebastoConnectSensor(WebastoBaseEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
+        if not isinstance(self.entity_description.name_fn, type(None)):  # type: ignore
+            self._attr_name = self.entity_description.name_fn(  # type: ignore
+                self._cloud.devices[self._device_id]
+            )
         self._attr_native_value = self.entity_description.value_fn(  # type: ignore
             self._cloud.devices[self._device_id]
         )

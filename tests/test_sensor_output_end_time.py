@@ -3,7 +3,10 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
-from custom_components.webastoconnect.sensor import _main_output_end_time
+from custom_components.webastoconnect.sensor import (
+    _main_output_end_name,
+    _main_output_end_time,
+)
 
 
 def test_main_output_end_time_returns_timestamp_for_active_main_output() -> None:
@@ -30,6 +33,20 @@ def test_main_output_end_time_prefers_pywebasto_property() -> None:
     )
 
     assert _main_output_end_time(device) == timestamp
+
+
+def test_main_output_end_name_uses_output_main_name() -> None:
+    """The sensor name should follow the output main label."""
+    device = SimpleNamespace(output_main_name="Heater")
+
+    assert _main_output_end_name(device) == "Heater ends"
+
+
+def test_main_output_end_name_falls_back_for_invalid_name() -> None:
+    """Invalid output names should use a safe fallback label."""
+    device = SimpleNamespace(output_main_name=False)
+
+    assert _main_output_end_name(device) == "Output ends"
 
 
 def test_main_output_end_time_returns_none_when_output_is_off() -> None:
