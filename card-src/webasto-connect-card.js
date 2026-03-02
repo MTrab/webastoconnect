@@ -1,6 +1,25 @@
 import { localize } from "./localize/localize.js";
 
+function escapeAttr(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 class WebastoConnectCard extends HTMLElement {
+  static getConfigElement() {
+    return document.createElement("webasto-connect-card-editor");
+  }
+
+  static getStubConfig() {
+    return {
+      main_output_entity: "switch.webasto_main_output",
+      ventilation_mode_entity: "switch.webasto_ventilation_mode",
+      end_time_entity: "sensor.webasto_main_output_end_time",
+    };
+  }
 
   setConfig(config) {
     if (!config.main_output_entity) {
@@ -189,11 +208,126 @@ class WebastoConnectCard extends HTMLElement {
   }
 }
 
-customElements.define("webasto-connect-card", WebastoConnectCard);
+class WebastoConnectCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = { ...config };
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  connectedCallback() {
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: "open" });
+    }
+    this._render();
+  }
+
+  _handleInput(ev) {
+    const field = ev.target?.dataset?.field;
+    if (!field) {
+      return;
+    }
+
+    const value = String(ev.target.value || "").trim();
+    const next = { ...(this._config || {}) };
+    if (value === "") {
+      delete next[field];
+    } else {
+      next[field] = value;
+    }
+
+    this._config = next;
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        detail: { config: next },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  _render() {
+    if (!this.shadowRoot) {
+      return;
+    }
+
+    const cfg = this._config || {};
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host {
+          display: block;
+          padding: 8px 0;
+        }
+        .grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+        label {
+          font-size: 13px;
+          color: var(--secondary-text-color);
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        input {
+          font: inherit;
+          color: var(--primary-text-color);
+          background: var(--card-background-color);
+          border: 1px solid var(--divider-color);
+          border-radius: 8px;
+          padding: 8px 10px;
+        }
+      </style>
+      <div class="grid">
+        <label>Main output entity
+          <input data-field="main_output_entity" value="${escapeAttr(cfg.main_output_entity)}" placeholder="switch.webasto_main_output" />
+        </label>
+        <label>Ventilation mode entity
+          <input data-field="ventilation_mode_entity" value="${escapeAttr(cfg.ventilation_mode_entity)}" placeholder="switch.webasto_ventilation_mode" />
+        </label>
+        <label>End-time sensor entity
+          <input data-field="end_time_entity" value="${escapeAttr(cfg.end_time_entity)}" placeholder="sensor.webasto_main_output_end_time" />
+        </label>
+        <label>Center icon
+          <input data-field="center_icon" value="${escapeAttr(cfg.center_icon)}" placeholder="mdi:car-defrost-rear" />
+        </label>
+        <label>Geo-fence title (optional)
+          <input data-field="title_geo_fence" value="${escapeAttr(cfg.title_geo_fence)}" />
+        </label>
+        <label>Mode title (optional)
+          <input data-field="title_mode" value="${escapeAttr(cfg.title_mode)}" />
+        </label>
+        <label>Timers title (optional)
+          <input data-field="title_timers" value="${escapeAttr(cfg.title_timers)}" />
+        </label>
+        <label>Map title (optional)
+          <input data-field="title_map" value="${escapeAttr(cfg.title_map)}" />
+        </label>
+      </div>
+    `;
+
+    this.shadowRoot.querySelectorAll("input").forEach((input) => {
+      input.addEventListener("change", (ev) => this._handleInput(ev));
+    });
+  }
+}
+
+if (!customElements.get("webasto-connect-card")) {
+  customElements.define("webasto-connect-card", WebastoConnectCard);
+}
+if (!customElements.get("webasto-connect-card-editor")) {
+  customElements.define("webasto-connect-card-editor", WebastoConnectCardEditor);
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "webasto-connect-card",
   name: "Webasto Connect Card",
   description: "Webasto Connect card with center toggle for main output",
+  preview: true,
 });
