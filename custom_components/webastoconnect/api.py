@@ -14,7 +14,7 @@ from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 from .const import DOMAIN
 
 SCAN_INTERVAL = timedelta(seconds=30)
-UNAUTHORIZED_RETRY_AFTER = 20
+UNAUTHORIZED_RETRY_AFTER = 5
 MAX_CONSECUTIVE_UNAUTHORIZED = 3
 LOGGER = logging.getLogger(__name__)
 
