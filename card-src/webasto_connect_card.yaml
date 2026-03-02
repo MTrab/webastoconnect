@@ -10,9 +10,9 @@
 # 3) Use this card config:
 
 type: custom:webasto-connect-card
-main_output_entity: switch.webasto_main_output
-ventilation_mode_entity: switch.webasto_ventilation_mode
-end_time_entity: sensor.webasto_main_output_end_time
+main_output_entity: switch.<your_main_output_entity>
+ventilation_mode_entity: switch.<your_ventilation_mode_entity>
+end_time_entity: sensor.<your_end_time_entity>
 
 # Optional labels:
 # title_geo_fence: Geo-fence

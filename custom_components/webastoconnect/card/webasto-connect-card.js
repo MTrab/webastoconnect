@@ -11,6 +11,7 @@ const WEBASTO_CONNECT_CARD_TRANSLATIONS = {
         inactive: "Ikke aktiv",
         ending_now: "Slutter nu",
         minutes_left: "{minutes} minutter tilbage",
+        main_output_missing: "Vælg Main output entity i kortindstillinger",
         output: "Output",
         toggle_output: "Skift output",
       },
@@ -26,6 +27,7 @@ const WEBASTO_CONNECT_CARD_TRANSLATIONS = {
         inactive: "Inactive",
         ending_now: "Ending now",
         minutes_left: "{minutes} minutes left",
+        main_output_missing: "Select Main output entity in card settings",
         output: "Output",
         toggle_output: "Toggle output",
       },
@@ -155,11 +157,16 @@ class WebastoConnectCard extends HTMLElement {
   }
 
   _toggleMainOutput() {
-    if (!this._hass || !this._config?.main_output_entity) {
+    const entityId = this._config?.main_output_entity;
+    if (!this._hass || !entityId || !this._hass.states?.[entityId]) {
+      console.warn(
+        "[webasto-connect-card] Missing or unavailable main_output_entity:",
+        entityId
+      );
       return;
     }
     this._hass.callService("switch", "toggle", {
-      entity_id: this._config.main_output_entity,
+      entity_id: entityId,
     });
   }
 
@@ -171,10 +178,13 @@ class WebastoConnectCard extends HTMLElement {
     const main = this._getState(this._config.main_output_entity);
     const end = this._getState(this._config.end_time_entity);
 
-    const isOn = main?.state === "on";
-    const ringColor = isOn ? "#d33131" : "#2ea44f";
+    const isMainAvailable = Boolean(main);
+    const isOn = isMainAvailable && main.state === "on";
+    const ringColor = !isMainAvailable ? "#9aa4b5" : isOn ? "#d33131" : "#2ea44f";
     const outputName = this._computeOutputName(main);
-    const label = this._computeLabel(end);
+    const label = isMainAvailable
+      ? this._computeLabel(end)
+      : localize(this._hass, "card.ui.main_output_missing");
     const icon = this._config.center_icon || "mdi:car-defrost-rear";
     const titleGeoFence =
       this._config.title_geo_fence || localize(this._hass, "card.ui.geo_fence");

@@ -8,6 +8,7 @@
       "inactive": "Ikke aktiv",
       "ending_now": "Slutter nu",
       "minutes_left": "{minutes} minutter tilbage",
+      "main_output_missing": "Vælg Main output entity i kortindstillinger",
       "output": "Output",
       "toggle_output": "Skift output"
     }
