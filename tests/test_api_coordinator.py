@@ -48,3 +48,14 @@ async def test_update_data_maps_invalid_request_to_update_failed() -> None:
     with pytest.raises(UpdateFailed):
         await coordinator._async_update_data()
 
+
+@pytest.mark.asyncio
+async def test_update_data_sets_retry_after_for_unexpected_errors() -> None:
+    """Unexpected exceptions should request delayed retry."""
+    update_mock = AsyncMock(side_effect=RuntimeError("boom"))
+    coordinator = _build_coordinator(update_mock)
+
+    with pytest.raises(UpdateFailed) as exc_info:
+        await coordinator._async_update_data()
+
+    assert exc_info.value.retry_after == 300

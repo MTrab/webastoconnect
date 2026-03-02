@@ -59,4 +59,7 @@ class WebastoConnectUpdateCoordinator(DataUpdateCoordinator[None]):
         except InvalidRequestException as err:
             raise UpdateFailed(f"Webasto API request failed: {err}") from err
         except Exception as err:
-            raise UpdateFailed(f"Unexpected update failure: {err}") from err
+            raise UpdateFailed(
+                f"Unexpected update failure: {err}",
+                retry_after=300,
+            ) from err
