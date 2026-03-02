@@ -1,24 +1,31 @@
 """Helpers for installing/updating the bundled Webasto Connect Lovelace card."""
 
 from pathlib import Path
+import re
 import shutil
 
 from .const import (
     CARD_FILENAME,
     CARD_SOURCE_DIR,
-    CARD_SOURCE_VERSION_FILE,
-    CARD_VERSION_FILENAME,
     CARD_WWW_SUBDIR,
 )
 
+CARD_VERSION_PATTERN = re.compile(
+    r"__WEBASTO_CONNECT_CARD_VERSION__\s*=\s*['\"]([^'\"]+)['\"]"
+)
 
-def read_version_file(path: Path) -> str | None:
-    """Read a version marker file, returning None when missing/empty."""
+
+def read_card_version(path: Path) -> str | None:
+    """Read card version marker directly from the JavaScript bundle."""
     try:
-        value = path.read_text(encoding="utf-8").strip()
+        content = path.read_text(encoding="utf-8")
     except OSError:
         return None
-    return value or None
+
+    if match := CARD_VERSION_PATTERN.search(content):
+        return match.group(1)
+
+    return None
 
 
 def should_install_card(
@@ -38,16 +45,14 @@ def ensure_card_installed(integration_path: Path, www_path: Path) -> tuple[bool,
     """Copy bundled card assets into Home Assistant www directory when needed."""
     source_dir = integration_path / CARD_SOURCE_DIR
     source_entry = source_dir / CARD_FILENAME
-    source_version_file = source_dir / CARD_SOURCE_VERSION_FILE
 
-    source_version = read_version_file(source_version_file)
+    source_version = read_card_version(source_entry)
     if source_version is None or not source_entry.exists():
         return False, None
 
     target_dir = www_path / CARD_WWW_SUBDIR
     target_entry = target_dir / CARD_FILENAME
-    target_version_file = target_dir / CARD_VERSION_FILENAME
-    installed_version = read_version_file(target_version_file)
+    installed_version = read_card_version(target_entry)
 
     if not should_install_card(source_version, installed_version, target_entry):
         return False, source_version
@@ -55,6 +60,4 @@ def ensure_card_installed(integration_path: Path, www_path: Path) -> tuple[bool,
     target_dir.mkdir(parents=True, exist_ok=True)
 
     shutil.copy2(source_entry, target_entry)
-
-    target_version_file.write_text(source_version, encoding="utf-8")
     return True, source_version

@@ -1,3 +1,5 @@
+globalThis.__WEBASTO_CONNECT_CARD_VERSION__ = "0.1.0";
+
 const WEBASTO_CONNECT_CARD_TRANSLATIONS = {
   da: {
     card: {

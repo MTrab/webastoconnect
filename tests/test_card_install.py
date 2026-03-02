@@ -4,7 +4,7 @@ from pathlib import Path
 
 from custom_components.webastoconnect.card_install import (
     ensure_card_installed,
-    read_version_file,
+    read_card_version,
     should_install_card,
 )
 
@@ -15,15 +15,27 @@ def _prepare_source_tree(base: Path, version: str) -> Path:
     source_dir.mkdir(parents=True)
 
     (source_dir / "webasto-connect-card.js").write_text(
-        "console.log('webasto card');", encoding="utf-8"
+        f'globalThis.__WEBASTO_CONNECT_CARD_VERSION__ = "{version}";\n'
+        "console.log('webasto card');",
+        encoding="utf-8",
     )
-    (source_dir / "VERSION").write_text(version, encoding="utf-8")
     return integration_path
 
 
-def test_read_version_file_returns_none_on_missing(tmp_path: Path) -> None:
-    """Missing version file should return None."""
-    assert read_version_file(tmp_path / "missing") is None
+def test_read_card_version_returns_none_on_missing(tmp_path: Path) -> None:
+    """Missing card file should return None."""
+    assert read_card_version(tmp_path / "missing.js") is None
+
+
+def test_read_card_version_from_js_marker(tmp_path: Path) -> None:
+    """Card version should be parsed from JavaScript marker line."""
+    card_file = tmp_path / "card.js"
+    card_file.write_text(
+        'globalThis.__WEBASTO_CONNECT_CARD_VERSION__ = "0.1.0";',
+        encoding="utf-8",
+    )
+
+    assert read_card_version(card_file) == "0.1.0"
 
 
 def test_should_install_card_logic(tmp_path: Path) -> None:
@@ -38,8 +50,8 @@ def test_should_install_card_logic(tmp_path: Path) -> None:
     assert should_install_card(None, "0.1.0", target) is False
 
 
-def test_ensure_card_installed_copies_bundle_and_version(tmp_path: Path) -> None:
-    """Built card should be copied to www folder and version persisted."""
+def test_ensure_card_installed_copies_bundle(tmp_path: Path) -> None:
+    """Built card should be copied to www folder."""
     integration_path = _prepare_source_tree(tmp_path, "0.1.0")
     www_path = tmp_path / "www"
 
@@ -48,12 +60,6 @@ def test_ensure_card_installed_copies_bundle_and_version(tmp_path: Path) -> None
     assert installed is True
     assert version == "0.1.0"
     assert (www_path / "webastoconnect" / "webasto-connect-card.js").exists()
-    assert (
-        (www_path / "webastoconnect" / "webasto-connect-card.version").read_text(
-            encoding="utf-8"
-        )
-        == "0.1.0"
-    )
 
 
 def test_ensure_card_installed_skips_when_up_to_date(tmp_path: Path) -> None:
