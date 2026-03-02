@@ -16,3 +16,10 @@ DOMAIN = "webastoconnect"
 
 PLATFORMS = ["sensor", "switch", "device_tracker", "binary_sensor", "number"]
 NEW_DATA = "webasto_signal"
+
+CARD_FILENAME = "webasto-connect-card.js"
+CARD_VERSION_FILENAME = "webasto-connect-card.version"
+CARD_SOURCE_DIR = "card"
+CARD_SOURCE_FILE = CARD_FILENAME
+CARD_SOURCE_VERSION_FILE = "VERSION"
+CARD_WWW_SUBDIR = "webastoconnect"

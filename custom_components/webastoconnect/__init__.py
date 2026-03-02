@@ -3,6 +3,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 import logging
+from pathlib import Path
 from typing import Any, TypeAlias
 
 from homeassistant.config_entries import ConfigEntry
@@ -15,7 +16,8 @@ from homeassistant.util import slugify as util_slugify
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
 from .api import WebastoConnectUpdateCoordinator
-from .const import DOMAIN, PLATFORMS, STARTUP
+from .card_install import ensure_card_installed
+from .const import CARD_FILENAME, DOMAIN, PLATFORMS, STARTUP
 
 LOGGER = logging.getLogger(__name__)
 
@@ -105,6 +107,21 @@ async def _async_setup(
         STARTUP,
         integration.version,
     )
+    installed, card_version = await hass.async_add_executor_job(
+        ensure_card_installed,
+        Path(integration.file_path),
+        Path(hass.config.path("www")),
+    )
+    if installed:
+        LOGGER.info(
+            "Installed Webasto Connect Card v%s at /local/webastoconnect/%s",
+            card_version,
+            CARD_FILENAME,
+        )
+    elif card_version is None:
+        LOGGER.warning(
+            "Webasto Connect Card assets not found in integration package; skipping install"
+        )
 
     coordinator = WebastoConnectUpdateCoordinator(hass, entry)
     try:

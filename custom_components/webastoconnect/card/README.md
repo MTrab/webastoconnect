@@ -13,7 +13,7 @@ Custom Home Assistant Lovelace card.
 From repository root:
 
 ```bash
-cd card
+cd custom_components/webastoconnect/card
 npm install
 npm run build
 ```
@@ -21,19 +21,27 @@ npm run build
 For iterative testing while developing:
 
 ```bash
-cd card
+cd custom_components/webastoconnect/card
 npm run build:watch
 ```
 
 ## Install in Home Assistant
+The integration auto-installs card assets on load/update to:
+- `config/www/webastoconnect/webasto-connect-card.js`
+- `config/www/webastoconnect/localize/*`
+- `config/www/webastoconnect/translations/*`
+
+Manual install is optional:
+
 From this repository root:
 
 ```bash
-cp card/dist/webasto-connect-card.js config/www/webasto-connect-card.js
+mkdir -p config/www/webastoconnect
+cp -r custom_components/webastoconnect/card/* config/www/webastoconnect/
 ```
 
 Then add a Lovelace resource:
-- URL: `/local/webasto-connect-card.js`
+- URL: `/local/webastoconnect/webasto-connect-card.js`
 - Type: `module`
 
 Use the example from `card/webasto_connect_card.yaml` and set your own entity IDs.

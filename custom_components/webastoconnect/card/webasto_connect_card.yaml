@@ -1,10 +1,11 @@
 # 1) Add this resource in Home Assistant:
-# URL: /local/webasto-connect-card.js
+# URL: /local/webastoconnect/webasto-connect-card.js
 # Type: module
 #
-# 2) Build card and copy output to HA www folder:
-# cd card && npm install && npm run build
-# cp card/dist/webasto-connect-card.js config/www/webasto-connect-card.js
+# 2) Assets are auto-installed by the integration on load/update.
+#    Manual copy (optional):
+#    mkdir -p config/www/webastoconnect
+#    cp -r custom_components/webastoconnect/card/* config/www/webastoconnect/
 #
 # 3) Use this card config:
 
