@@ -25,5 +25,3 @@ updates:
       - dependencies
       - patch
       - skip-changelog
-    ignore:
-      - dependency-name: "homeassistant"
