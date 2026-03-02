@@ -94,6 +94,9 @@ class WebastoConnectCard extends HTMLElement {
       main_output_entity: "switch.webasto_main_output",
       ventilation_mode_entity: "switch.webasto_ventilation_mode",
       end_time_entity: "sensor.webasto_main_output_end_time",
+      temperature_entity: "sensor.webasto_temperature",
+      battery_entity: "sensor.webasto_battery_voltage",
+      location_entity: "device_tracker.webasto_location",
     };
   }
 
@@ -170,6 +173,41 @@ class WebastoConnectCard extends HTMLElement {
     });
   }
 
+  _stateWithUnit(entity) {
+    if (!entity) {
+      return "--";
+    }
+    const state = entity.state;
+    if (state === "unknown" || state === "unavailable") {
+      return "--";
+    }
+    const unit = entity.attributes?.unit_of_measurement;
+    return unit ? `${state} ${unit}` : String(state);
+  }
+
+  _locationText(entity) {
+    if (!entity) {
+      return "--";
+    }
+    const state = String(entity.state ?? "");
+    if (
+      state !== "" &&
+      state !== "unknown" &&
+      state !== "unavailable" &&
+      state !== "not_home"
+    ) {
+      return state;
+    }
+
+    const lat = entity.attributes?.latitude;
+    const lon = entity.attributes?.longitude;
+    if (typeof lat === "number" && typeof lon === "number") {
+      return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    }
+
+    return "--";
+  }
+
   _render() {
     if (!this.shadowRoot || !this._config || !this._hass) {
       return;
@@ -177,6 +215,9 @@ class WebastoConnectCard extends HTMLElement {
 
     const main = this._getState(this._config.main_output_entity);
     const end = this._getState(this._config.end_time_entity);
+    const temp = this._getState(this._config.temperature_entity);
+    const battery = this._getState(this._config.battery_entity);
+    const location = this._getState(this._config.location_entity);
 
     const isMainAvailable = Boolean(main);
     const isOn = isMainAvailable && main.state === "on";
@@ -185,6 +226,9 @@ class WebastoConnectCard extends HTMLElement {
     const label = isMainAvailable
       ? this._computeLabel(end)
       : localize(this._hass, "card.ui.main_output_missing");
+    const tempText = this._stateWithUnit(temp);
+    const batteryText = this._stateWithUnit(battery);
+    const locationText = this._locationText(location);
     const icon = this._config.center_icon || "mdi:car-defrost-rear";
     const titleGeoFence =
       this._config.title_geo_fence || localize(this._hass, "card.ui.geo_fence");
@@ -197,6 +241,11 @@ class WebastoConnectCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; }
+        .wrapper {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
         ha-card {
           position: relative;
           height: 440px;
@@ -251,18 +300,57 @@ class WebastoConnectCard extends HTMLElement {
           text-align: center;
           max-width: 240px;
         }
+        .meta {
+          background: #ffffff;
+          border-radius: 14px;
+          padding: 10px 14px;
+          box-shadow: none;
+        }
+        .meta-row {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          color: #20334d;
+          font-size: 24px;
+          line-height: 1.3;
+          flex-wrap: wrap;
+        }
+        .meta-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .meta-location {
+          margin-top: 8px;
+          color: #20334d;
+          font-size: 22px;
+          line-height: 1.3;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          word-break: break-word;
+        }
       </style>
-      <ha-card>
-        <div class="q tl">${titleGeoFence}</div>
-        <div class="q tr">${titleMode}</div>
-        <div class="q bl">${titleTimers}</div>
-        <div class="q br">${titleMap}</div>
-        <div class="center-wrap" id="center-toggle" role="button" tabindex="0" aria-label="${toggleLabel}">
-          <ha-icon class="icon" icon="${icon}" style="--mdc-icon-size: 96px;"></ha-icon>
-          <div class="name">${outputName}</div>
-          <div class="label">${label}</div>
+      <div class="wrapper">
+        <ha-card>
+          <div class="q tl">${titleGeoFence}</div>
+          <div class="q tr">${titleMode}</div>
+          <div class="q bl">${titleTimers}</div>
+          <div class="q br">${titleMap}</div>
+          <div class="center-wrap" id="center-toggle" role="button" tabindex="0" aria-label="${toggleLabel}">
+            <ha-icon class="icon" icon="${icon}" style="--mdc-icon-size: 96px;"></ha-icon>
+            <div class="name">${outputName}</div>
+            <div class="label">${label}</div>
+          </div>
+        </ha-card>
+        <div class="meta">
+          <div class="meta-row">
+            <span class="meta-item"><ha-icon icon="mdi:thermometer" style="--mdc-icon-size: 24px;"></ha-icon>${tempText}</span>
+            <span class="meta-item"><ha-icon icon="mdi:car-battery" style="--mdc-icon-size: 24px;"></ha-icon>${batteryText}</span>
+          </div>
+          <div class="meta-location"><ha-icon icon="mdi:map-marker" style="--mdc-icon-size: 24px;"></ha-icon>${locationText}</div>
         </div>
-      </ha-card>
+      </div>
     `;
 
     const center = this.shadowRoot.getElementById("center-toggle");
@@ -366,6 +454,15 @@ class WebastoConnectCardEditor extends HTMLElement {
         </label>
         <label>End-time sensor entity
           <input data-field="end_time_entity" value="${escapeAttr(cfg.end_time_entity)}" placeholder="sensor.webasto_main_output_end_time" />
+        </label>
+        <label>Temperature entity
+          <input data-field="temperature_entity" value="${escapeAttr(cfg.temperature_entity)}" placeholder="sensor.webasto_temperature" />
+        </label>
+        <label>Battery entity
+          <input data-field="battery_entity" value="${escapeAttr(cfg.battery_entity)}" placeholder="sensor.webasto_battery_voltage" />
+        </label>
+        <label>Location entity
+          <input data-field="location_entity" value="${escapeAttr(cfg.location_entity)}" placeholder="device_tracker.webasto_location" />
         </label>
         <label>Center icon
           <input data-field="center_icon" value="${escapeAttr(cfg.center_icon)}" placeholder="mdi:car-defrost-rear" />

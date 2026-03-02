@@ -13,6 +13,9 @@ type: custom:webasto-connect-card
 main_output_entity: switch.<your_main_output_entity>
 ventilation_mode_entity: switch.<your_ventilation_mode_entity>
 end_time_entity: sensor.<your_end_time_entity>
+temperature_entity: sensor.<your_temperature_entity>
+battery_entity: sensor.<your_battery_entity>
+location_entity: sensor.<your_geocoded_location_entity_or_device_tracker>
 
 # Optional labels:
 # title_geo_fence: Geo-fence
