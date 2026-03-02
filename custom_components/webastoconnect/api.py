@@ -1,7 +1,9 @@
 """API connector class."""
 
+import asyncio
 import logging
 from datetime import datetime, timedelta
+from typing import Any, Awaitable, Callable, TypeVar
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
@@ -17,6 +19,7 @@ SCAN_INTERVAL = timedelta(seconds=30)
 UNAUTHORIZED_RETRY_AFTER = 5
 MAX_CONSECUTIVE_UNAUTHORIZED = 3
 LOGGER = logging.getLogger(__name__)
+_T = TypeVar("_T")
 
 
 class WebastoConnector:
@@ -51,12 +54,23 @@ class WebastoConnectUpdateCoordinator(DataUpdateCoordinator[None]):
             entry.options.get(CONF_PASSWORD, entry.data.get(CONF_PASSWORD)),
         )
         self._consecutive_unauthorized = 0
+        self._cloud_operation_lock = asyncio.Lock()
+
+    async def async_execute_cloud_call(
+        self,
+        cloud_call: Callable[..., Awaitable[_T]],
+        *args: Any,
+        **kwargs: Any,
+    ) -> _T:
+        """Serialize cloud operations to avoid device context races."""
+        async with self._cloud_operation_lock:
+            return await cloud_call(*args, **kwargs)
 
     async def _async_update_data(self) -> datetime | None:
         """Handle data update request from the coordinator."""
         LOGGER.debug("Data update called")
         try:
-            await self.cloud.update()
+            await self.async_execute_cloud_call(self.cloud.update)
             self._consecutive_unauthorized = 0
         except UnauthorizedException as err:
             self._consecutive_unauthorized += 1
