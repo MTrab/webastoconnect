@@ -4,7 +4,6 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.webastoconnect.const import ATTR_COORDINATOR, DOMAIN
 from custom_components.webastoconnect.diagnostics import (
     async_get_config_entry_diagnostics,
 )
@@ -34,19 +33,12 @@ async def test_diagnostics_keeps_api_payload_and_redacts_sensitive_fields() -> N
         _WebastoDevice__internal_only="should_not_be_exposed",
     )
 
-    hass = SimpleNamespace(
-        data={
-            DOMAIN: {
-                "entry-1": {
-                    ATTR_COORDINATOR: SimpleNamespace(
-                        cloud=SimpleNamespace(devices={123: device})
-                    )
-                }
-            }
-        }
-    )
+    hass = SimpleNamespace()
     entry = SimpleNamespace(
         entry_id="entry-1",
+        runtime_data=SimpleNamespace(
+            coordinator=SimpleNamespace(cloud=SimpleNamespace(devices={123: device}))
+        ),
         as_dict=lambda: {
             "title": "user@example.com",
             "unique_id": "user@example.com",

@@ -8,7 +8,6 @@ from pywebasto.exceptions import UnauthorizedException
 
 import custom_components.webastoconnect as integration
 from custom_components.webastoconnect.config_flow import WebastoConnectOptionsFlow
-from custom_components.webastoconnect.const import ATTR_UPDATE_LISTENER, DOMAIN
 
 
 @pytest.mark.asyncio
@@ -21,11 +20,10 @@ async def test_async_setup_entry_registers_update_listener(monkeypatch) -> None:
     remove_listener = Mock()
     entry = SimpleNamespace(entry_id="entry-1", add_update_listener=Mock())
     entry.add_update_listener.return_value = remove_listener
+    coordinator = SimpleNamespace()
 
     async def fake_setup(hass_obj, config_entry):
-        hass_obj.data.setdefault(DOMAIN, {})
-        hass_obj.data[DOMAIN][config_entry.entry_id] = {}
-        return True
+        return coordinator
 
     monkeypatch.setattr(integration, "_async_setup", fake_setup)
 
@@ -33,16 +31,19 @@ async def test_async_setup_entry_registers_update_listener(monkeypatch) -> None:
 
     assert result is True
     entry.add_update_listener.assert_called_once_with(integration.async_reload_entry)
-    assert hass.data[DOMAIN][entry.entry_id][ATTR_UPDATE_LISTENER] is remove_listener
+    assert entry.runtime_data.coordinator is coordinator
+    assert entry.runtime_data.update_listener is remove_listener
 
 
 @pytest.mark.asyncio
 async def test_async_unload_entry_calls_remove_listener_on_success() -> None:
     """Unload should unsubscribe update listener before removing entry data."""
     remove_listener = Mock()
-    entry = SimpleNamespace(entry_id="entry-1")
+    entry = SimpleNamespace(
+        entry_id="entry-1",
+        runtime_data=SimpleNamespace(update_listener=remove_listener),
+    )
     hass = SimpleNamespace(
-        data={DOMAIN: {"entry-1": {ATTR_UPDATE_LISTENER: remove_listener}}},
         config_entries=SimpleNamespace(async_unload_platforms=AsyncMock(return_value=True)),
     )
 
@@ -50,7 +51,6 @@ async def test_async_unload_entry_calls_remove_listener_on_success() -> None:
 
     assert unload_ok is True
     remove_listener.assert_called_once()
-    assert "entry-1" not in hass.data[DOMAIN]
 
 
 @pytest.mark.asyncio

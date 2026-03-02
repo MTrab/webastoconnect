@@ -7,7 +7,6 @@ import pytest
 from homeassistant.const import CONF_EMAIL
 
 import custom_components.webastoconnect as integration
-from custom_components.webastoconnect.const import ATTR_DEVICES, DOMAIN
 
 
 @pytest.mark.asyncio
@@ -25,24 +24,28 @@ async def test_setup_skips_first_refresh_when_connect_hydrates_devices(monkeypat
         created.append(coordinator)
         return coordinator
 
-    monkeypatch.setattr(integration, "WebastoConnectUpdateCoordinator", coordinator_factory)
+    monkeypatch.setattr(
+        integration, "WebastoConnectUpdateCoordinator", coordinator_factory
+    )
     monkeypatch.setattr(
         integration,
         "async_get_integration",
         AsyncMock(return_value=SimpleNamespace(version="test")),
     )
-    monkeypatch.setattr(integration, "_async_migrate_unique_ids", AsyncMock())
+    migrate_mock = AsyncMock()
+    monkeypatch.setattr(integration, "_async_migrate_unique_ids", migrate_mock)
 
-    hass = SimpleNamespace(data={DOMAIN: {}})
+    hass = SimpleNamespace()
     entry = SimpleNamespace(entry_id="entry-1", data={CONF_EMAIL: "a@b.c"}, options={})
 
-    assert await integration._async_setup(hass, entry) is True
+    result = await integration._async_setup(hass, entry)
 
     coordinator = created[0]
+    assert result is coordinator
     coordinator.cloud.connect.assert_awaited_once()
     coordinator.async_set_updated_data.assert_called_once_with(None)
     coordinator.async_config_entry_first_refresh.assert_not_awaited()
-    assert hass.data[DOMAIN]["entry-1"][ATTR_DEVICES][1] is device
+    migrate_mock.assert_awaited_once_with(hass, 1, "Heater", entry)
 
 
 @pytest.mark.asyncio
@@ -59,19 +62,22 @@ async def test_setup_runs_first_refresh_when_connect_has_no_devices(monkeypatch)
         created.append(coordinator)
         return coordinator
 
-    monkeypatch.setattr(integration, "WebastoConnectUpdateCoordinator", coordinator_factory)
+    monkeypatch.setattr(
+        integration, "WebastoConnectUpdateCoordinator", coordinator_factory
+    )
     monkeypatch.setattr(
         integration,
         "async_get_integration",
         AsyncMock(return_value=SimpleNamespace(version="test")),
     )
 
-    hass = SimpleNamespace(data={DOMAIN: {}})
+    hass = SimpleNamespace()
     entry = SimpleNamespace(entry_id="entry-1", data={CONF_EMAIL: "a@b.c"}, options={})
 
-    assert await integration._async_setup(hass, entry) is True
+    result = await integration._async_setup(hass, entry)
 
     coordinator = created[0]
+    assert result is coordinator
     coordinator.cloud.connect.assert_awaited_once()
     coordinator.async_config_entry_first_refresh.assert_awaited_once()
     coordinator.async_set_updated_data.assert_not_called()

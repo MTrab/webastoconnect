@@ -1,7 +1,9 @@
 """Add Webasto ThermoConnect support to Home Assistant."""
 
+from collections.abc import Callable
+from dataclasses import dataclass
 import logging
-from typing import Any
+from typing import Any, TypeAlias
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL
@@ -13,30 +15,34 @@ from homeassistant.util import slugify as util_slugify
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
 from .api import WebastoConnectUpdateCoordinator
-from .const import (
-    ATTR_COORDINATOR,
-    ATTR_DEVICES,
-    ATTR_UPDATE_LISTENER,
-    DOMAIN,
-    PLATFORMS,
-    STARTUP,
-)
+from .const import DOMAIN, PLATFORMS, STARTUP
 
 LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+@dataclass(slots=True)
+class WebastoRuntimeData:
+    """Runtime data for the Webasto config entry."""
+
+    coordinator: WebastoConnectUpdateCoordinator
+    update_listener: Callable[[], None]
+
+
+WebastoConfigEntry: TypeAlias = ConfigEntry[WebastoRuntimeData]
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: WebastoConfigEntry) -> bool:
     """Set up cloud API connector from a config entry."""
-    hass.data.setdefault(DOMAIN, {})
-
-    result = await _async_setup(hass, entry)
-
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    hass.data[DOMAIN][entry.entry_id][ATTR_UPDATE_LISTENER] = (
-        entry.add_update_listener(async_reload_entry)
+    coordinator = await _async_setup(hass, entry)
+    update_listener = entry.add_update_listener(async_reload_entry)
+    entry.runtime_data = WebastoRuntimeData(
+        coordinator=coordinator,
+        update_listener=update_listener,
     )
 
-    return result
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    return True
 
 
 async def _async_migrate_unique_ids(
@@ -90,7 +96,9 @@ async def _async_migrate_unique_ids(
     )
 
 
-async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def _async_setup(
+    hass: HomeAssistant, entry: WebastoConfigEntry
+) -> WebastoConnectUpdateCoordinator:
     """Set up the integration using a config entry."""
     integration = await async_get_integration(hass, DOMAIN)
     LOGGER.info(
@@ -110,11 +118,6 @@ async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except InvalidRequestException:
         raise ConfigEntryNotReady("Error connecting to the API - try again later")
 
-    hass.data[DOMAIN][entry.entry_id] = {
-        ATTR_COORDINATOR: coordinator,
-        ATTR_DEVICES: {},
-    }
-
     if coordinator.cloud.devices:
         # connect() already hydrated device state, avoid an immediate duplicate update call.
         coordinator.async_set_updated_data(None)
@@ -125,24 +128,20 @@ async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         LOGGER.debug("Found device: %s", device.name)
         # Migrate unique IDs
         await _async_migrate_unique_ids(hass, id, device.name, entry)
-        hass.data[DOMAIN][entry.entry_id][ATTR_DEVICES][id] = device
 
-    return True
+    return coordinator
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: WebastoConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
-        update_listener = hass.data[DOMAIN][entry.entry_id].get(ATTR_UPDATE_LISTENER)
-        if callable(update_listener):
-            update_listener()
-        hass.data[DOMAIN].pop(entry.entry_id)
+        entry.runtime_data.update_listener()
     return unload_ok
 
 
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def async_reload_entry(hass: HomeAssistant, entry: WebastoConfigEntry) -> None:
     """Reload config entry."""
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)

@@ -5,12 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_LATITUDE, CONF_LONGITUDE, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 
+from . import WebastoConfigEntry
 from .api import WebastoConnectUpdateCoordinator
-from .const import ATTR_COORDINATOR, DOMAIN
 
 TO_REDACT = {
     CONF_PASSWORD,
@@ -27,7 +26,7 @@ TO_REDACT = {
 
 
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: ConfigEntry
+    hass: HomeAssistant, entry: WebastoConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     data_dict = {
@@ -35,9 +34,7 @@ async def async_get_config_entry_diagnostics(
         "devices": {},
     }
 
-    api: WebastoConnectUpdateCoordinator = hass.data[DOMAIN][entry.entry_id][
-        ATTR_COORDINATOR
-    ]
+    api: WebastoConnectUpdateCoordinator = entry.runtime_data.coordinator
 
     for id, device in api.cloud.devices.items():
         data_dict["devices"][str(id)] = {

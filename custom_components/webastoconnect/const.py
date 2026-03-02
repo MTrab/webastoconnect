@@ -16,7 +16,3 @@ DOMAIN = "webastoconnect"
 
 PLATFORMS = ["sensor", "switch", "device_tracker", "binary_sensor", "number"]
 NEW_DATA = "webasto_signal"
-
-ATTR_COORDINATOR = "updatecoordinator"
-ATTR_DEVICES = "devices"
-ATTR_UPDATE_LISTENER = "update_listener"

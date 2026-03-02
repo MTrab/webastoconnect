@@ -8,14 +8,13 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
 from homeassistant.util import slugify as util_slugify
 
+from . import WebastoConfigEntry
 from .api import WebastoConnectUpdateCoordinator
 from .base import WebastoBaseEntity, WebastoConnectSensorEntityDescription
-from .const import ATTR_COORDINATOR, DOMAIN
 
 LOGGER = logging.getLogger(__name__)
 
@@ -55,11 +54,11 @@ SENSORS = [
 ]
 
 
-async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
+async def async_setup_entry(hass, entry: WebastoConfigEntry, async_add_devices):
     """Set up sensors."""
     sensors = []
 
-    coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
+    coordinator = entry.runtime_data.coordinator
 
     for id, device in coordinator.cloud.devices.items():
         LOGGER.debug("Setting up sensors for device: %s", device.name)
