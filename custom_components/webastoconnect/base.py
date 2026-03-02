@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, Union
+from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.components.number import NumberEntityDescription
@@ -41,8 +41,8 @@ class WebastoConnectBinarySensorEntityDescription(
 class WebastoConnectSensorEntityDescription(SensorEntityDescription):
     """Describes a Webasto sensor."""
 
-    value_fn: Optional[Callable[[Any], Any | None]] = None
-    unit_fn: Optional[Callable[[Any], Any]] = None
+    value_fn: Callable[[Any], Any | None] | None = None
+    unit_fn: Callable[[Any], Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -52,9 +52,9 @@ class WebastoConnectSwitchEntityDescription(
     """Describes a Webasto switch."""
 
     # allow command_fn to accept (webasto, id, state) by using a variadic Callable
-    command_fn: Optional[Callable[..., Any]] = None
-    type_fn: Optional[Callable[[WebastoConnect], None]] = None
-    name_fn: Optional[Callable[["WebastoDevice"], Union[str, bool]]] = None
+    command_fn: Callable[..., Any] | None = None
+    type_fn: Callable[[WebastoConnect], None] | None = None
+    name_fn: Callable[["WebastoDevice"], str | bool] | None = None
 
 
 @dataclass(frozen=True)
@@ -64,8 +64,8 @@ class WebastoConnectNumberEntityDescription(
     """Describes a Webasto number."""
 
     value_fn: Callable[[Any], Any]
-    set_fn: Optional[Callable[[Any, Any], Any]] = None
-    unit_fn: Optional[Callable[["WebastoDevice"], Any]] = None
+    set_fn: Callable[[Any, Any], Any] | None = None
+    unit_fn: Callable[["WebastoDevice"], Any] | None = None
 
 
 class WebastoBaseEntity(CoordinatorEntity[DataUpdateCoordinator[None]]):

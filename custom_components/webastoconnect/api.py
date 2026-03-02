@@ -3,7 +3,8 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Awaitable, Callable, TypeVar
+from typing import Any, TypeVar
+from collections.abc import Awaitable, Callable
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
