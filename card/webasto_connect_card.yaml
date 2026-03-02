@@ -1,9 +1,10 @@
 # 1) Add this resource in Home Assistant:
-# URL: /local/webasto-connect-card.js
+# URL: /local/webasto-connect-card/webasto-connect-card.js
 # Type: module
 #
-# 2) Place `card/webasto-connect-card.js` in your HA www folder:
-# config/www/webasto-connect-card.js
+# 2) Copy the full `card/` folder content into HA www folder:
+# mkdir -p config/www/webasto-connect-card
+# cp -r card/* config/www/webasto-connect-card/
 #
 # 3) Use this card config:
 

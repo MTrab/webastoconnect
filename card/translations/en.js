@@ -1,0 +1,16 @@
+export const en = {
+  card: {
+    ui: {
+      geo_fence: "Geo-fence",
+      mode: "Mode",
+      timers: "Timers",
+      map: "Map",
+      inactive: "Inactive",
+      ending_now: "Ending now",
+      minutes_left: "{minutes} minutes left",
+      heater: "Heater",
+      ventilation: "Ventilation",
+      toggle_output: "Toggle output",
+    },
+  },
+};

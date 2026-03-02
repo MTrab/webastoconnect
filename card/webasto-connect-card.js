@@ -1,30 +1,6 @@
+import { localize } from "./localize/localize.js";
+
 class WebastoConnectCard extends HTMLElement {
-  static TRANSLATIONS = {
-    en: {
-      geo_fence: "Geo-fence",
-      mode: "Mode",
-      timers: "Timers",
-      map: "Map",
-      inactive: "Inactive",
-      ending_now: "Ending now",
-      minutes_left: "{minutes} minutes left",
-      heater: "Heater",
-      ventilation: "Ventilation",
-      toggle_output: "Toggle output",
-    },
-    da: {
-      geo_fence: "Geo-fence",
-      mode: "Modus",
-      timers: "Timere",
-      map: "Kort",
-      inactive: "Ikke aktiv",
-      ending_now: "Slutter nu",
-      minutes_left: "{minutes} minutter tilbage",
-      heater: "Heater",
-      ventilation: "Ventilation",
-      toggle_output: "Skift output",
-    },
-  };
 
   setConfig(config) {
     if (!config.main_output_entity) {
@@ -53,50 +29,29 @@ class WebastoConnectCard extends HTMLElement {
     return entityId ? this._hass?.states?.[entityId] : undefined;
   }
 
-  _lang() {
-    const raw = String(this._hass?.language || "en").toLowerCase();
-    if (WebastoConnectCard.TRANSLATIONS[raw]) {
-      return raw;
-    }
-    const short = raw.split("-")[0];
-    return WebastoConnectCard.TRANSLATIONS[short] ? short : "en";
-  }
-
-  _t(key, vars = {}) {
-    const lang = this._lang();
-    let text =
-      WebastoConnectCard.TRANSLATIONS[lang][key] ||
-      WebastoConnectCard.TRANSLATIONS.en[key] ||
-      key;
-
-    Object.entries(vars).forEach(([name, value]) => {
-      text = text.replace(`{${name}}`, String(value));
-    });
-
-    return text;
-  }
-
   _computeLabel(endEntity) {
     if (!endEntity || !endEntity.state || endEntity.state === "unknown" || endEntity.state === "unavailable") {
-      return this._t("inactive");
+      return localize(this._hass, "card.ui.inactive");
     }
 
     const end = new Date(endEntity.state);
     if (Number.isNaN(end.getTime())) {
-      return this._t("inactive");
+      return localize(this._hass, "card.ui.inactive");
     }
 
     const leftMinutes = Math.round((end.getTime() - Date.now()) / 60000);
     if (leftMinutes <= 0) {
-      return this._t("ending_now");
+      return localize(this._hass, "card.ui.ending_now");
     }
-    return this._t("minutes_left", { minutes: leftMinutes });
+    return localize(this._hass, "card.ui.minutes_left", {
+      minutes: leftMinutes,
+    });
   }
 
   _computeOutputName(ventModeState) {
     return ventModeState?.state === "on"
-      ? this._t("ventilation")
-      : this._t("heater");
+      ? localize(this._hass, "card.ui.ventilation")
+      : localize(this._hass, "card.ui.heater");
   }
 
   _toggleMainOutput() {
@@ -122,11 +77,15 @@ class WebastoConnectCard extends HTMLElement {
     const outputName = this._computeOutputName(vent);
     const label = this._computeLabel(end);
     const icon = this._config.center_icon || "mdi:car-defrost-rear";
-    const titleGeoFence = this._config.title_geo_fence || this._t("geo_fence");
-    const titleMode = this._config.title_mode || this._t("mode");
-    const titleTimers = this._config.title_timers || this._t("timers");
-    const titleMap = this._config.title_map || this._t("map");
-    const toggleLabel = this._t("toggle_output");
+    const titleGeoFence =
+      this._config.title_geo_fence || localize(this._hass, "card.ui.geo_fence");
+    const titleMode =
+      this._config.title_mode || localize(this._hass, "card.ui.mode");
+    const titleTimers =
+      this._config.title_timers || localize(this._hass, "card.ui.timers");
+    const titleMap =
+      this._config.title_map || localize(this._hass, "card.ui.map");
+    const toggleLabel = localize(this._hass, "card.ui.toggle_output");
 
     this.shadowRoot.innerHTML = `
       <style>
