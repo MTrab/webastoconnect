@@ -14,6 +14,8 @@ from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 from .const import DOMAIN
 
 SCAN_INTERVAL = timedelta(seconds=30)
+UNAUTHORIZED_RETRY_AFTER = 20
+MAX_CONSECUTIVE_UNAUTHORIZED = 3
 LOGGER = logging.getLogger(__name__)
 
 
@@ -48,17 +50,28 @@ class WebastoConnectUpdateCoordinator(DataUpdateCoordinator[None]):
             entry.options.get(CONF_EMAIL, entry.data.get(CONF_EMAIL)),
             entry.options.get(CONF_PASSWORD, entry.data.get(CONF_PASSWORD)),
         )
+        self._consecutive_unauthorized = 0
 
     async def _async_update_data(self) -> datetime | None:
         """Handle data update request from the coordinator."""
         LOGGER.debug("Data update called")
         try:
             await self.cloud.update()
+            self._consecutive_unauthorized = 0
         except UnauthorizedException as err:
-            raise ConfigEntryAuthFailed("Authentication with Webasto failed") from err
+            self._consecutive_unauthorized += 1
+            if self._consecutive_unauthorized >= MAX_CONSECUTIVE_UNAUTHORIZED:
+                raise ConfigEntryAuthFailed("Authentication with Webasto failed") from err
+
+            raise UpdateFailed(
+                "Received unauthorized from Webasto API, retrying shortly",
+                retry_after=UNAUTHORIZED_RETRY_AFTER,
+            ) from err
         except InvalidRequestException as err:
+            self._consecutive_unauthorized = 0
             raise UpdateFailed(f"Webasto API request failed: {err}") from err
         except Exception as err:
+            self._consecutive_unauthorized = 0
             raise UpdateFailed(
                 f"Unexpected update failure: {err}",
                 retry_after=300,
