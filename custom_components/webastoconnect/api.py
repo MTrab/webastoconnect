@@ -6,8 +6,10 @@ from datetime import datetime, timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pywebasto import WebastoConnect
+from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
 from .const import DOMAIN
 
@@ -19,7 +21,7 @@ class WebastoConnector:
     """Webasto Connector."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
-        """Initialization of the connector."""
+        """Initialize the connector."""
         self.hass = hass
         self.cloud: WebastoConnect = WebastoConnect(
             entry.options.get(CONF_EMAIL, entry.data.get(CONF_EMAIL)),
@@ -52,5 +54,9 @@ class WebastoConnectUpdateCoordinator(DataUpdateCoordinator[None]):
         LOGGER.debug("Data update called")
         try:
             await self.cloud.update()
-        except Exception as ex:
-            raise UpdateFailed(retry_after=300) from ex
+        except UnauthorizedException as err:
+            raise ConfigEntryAuthFailed("Authentication with Webasto failed") from err
+        except InvalidRequestException as err:
+            raise UpdateFailed(f"Webasto API request failed: {err}") from err
+        except Exception as err:
+            raise UpdateFailed(f"Unexpected update failure: {err}") from err
