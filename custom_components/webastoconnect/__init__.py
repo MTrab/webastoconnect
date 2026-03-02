@@ -13,7 +13,14 @@ from homeassistant.util import slugify as util_slugify
 from pywebasto.exceptions import UnauthorizedException,InvalidRequestException
 
 from .api import WebastoConnectUpdateCoordinator
-from .const import ATTR_COORDINATOR, ATTR_DEVICES, DOMAIN, PLATFORMS, STARTUP
+from .const import (
+    ATTR_COORDINATOR,
+    ATTR_DEVICES,
+    ATTR_UPDATE_LISTENER,
+    DOMAIN,
+    PLATFORMS,
+    STARTUP,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,6 +32,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     result = await _async_setup(hass, entry)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    hass.data[DOMAIN][entry.entry_id][ATTR_UPDATE_LISTENER] = (
+        entry.add_update_listener(async_reload_entry)
+    )
 
     return result
 
@@ -44,7 +54,7 @@ async def _async_migrate_unique_ids(
         entity_unique_id = entity_entry.unique_id
         entity_name = entity_entry.original_name
 
-        if not heater_name.lower() in str(entity_entry.suggested_object_id):
+        if heater_name.lower() not in str(entity_entry.suggested_object_id):
             LOGGER.debug(
                 "Skipping entity '%s' during migration, heater name '%s' not found in '%s'",
                 entity_entry.entity_id,
@@ -81,7 +91,7 @@ async def _async_migrate_unique_ids(
 
 
 async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Setup the integration using a config entry."""
+    """Set up the integration using a config entry."""
     integration = await async_get_integration(hass, DOMAIN)
     LOGGER.info(
         STARTUP,
@@ -121,6 +131,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
+        update_listener = hass.data[DOMAIN][entry.entry_id].get(ATTR_UPDATE_LISTENER)
+        if callable(update_listener):
+            update_listener()
         hass.data[DOMAIN].pop(entry.entry_id)
     return unload_ok
 
