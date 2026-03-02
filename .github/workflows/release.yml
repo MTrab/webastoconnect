@@ -15,6 +15,10 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
       - name: Update manifest.json version to ${{ github.event.release.tag_name }}
         run: |
           python3 ${{ github.workspace }}/.github/scripts/update_hacs_manifest.py --version ${{ github.event.release.tag_name }} --path /custom_components/webastoconnect/
@@ -25,6 +29,11 @@ jobs:
           git add ./custom_components/webastoconnect/manifest.json
           git commit -m "Updated manifest.json"
           git push origin HEAD:main
+      - name: Build Webasto Connect Card
+        run: |
+          cd card-src
+          npm install
+          npm run build
       - name: Create zip
         run: |
           cd custom_components/webastoconnect
