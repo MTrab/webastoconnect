@@ -15,6 +15,8 @@ from .const import ATTR_COORDINATOR, DOMAIN
 TO_REDACT = {
     CONF_PASSWORD,
     CONF_EMAIL,
+    "title",
+    "unique_id",
     CONF_LATITUDE,
     CONF_LONGITUDE,
     "lat",

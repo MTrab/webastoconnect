@@ -48,7 +48,9 @@ async def test_diagnostics_keeps_api_payload_and_redacts_sensitive_fields() -> N
     entry = SimpleNamespace(
         entry_id="entry-1",
         as_dict=lambda: {
-            "data": {"email": "user@example.com", "password": "secret"}
+            "title": "user@example.com",
+            "unique_id": "user@example.com",
+            "data": {"email": "user@example.com", "password": "secret"},
         },
     )
 
@@ -60,4 +62,6 @@ async def test_diagnostics_keeps_api_payload_and_redacts_sensitive_fields() -> N
     assert payload["api_payload"]["settings"]["general"]["acc_email"] == "**REDACTED**"
     assert diagnostics["entry"]["data"]["email"] == "**REDACTED**"
     assert diagnostics["entry"]["data"]["password"] == "**REDACTED**"
+    assert diagnostics["entry"]["title"] == "**REDACTED**"
+    assert diagnostics["entry"]["unique_id"] == "**REDACTED**"
     assert "_WebastoDevice__internal_only" not in payload
