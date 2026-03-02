@@ -6,6 +6,13 @@ import logging
 from pathlib import Path
 from typing import Any, TypeAlias
 
+from homeassistant.components.lovelace.const import (
+    CONF_RESOURCE_TYPE_WS,
+    CONF_TYPE,
+    CONF_URL,
+    LOVELACE_DATA,
+    MODE_STORAGE,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL
 from homeassistant.core import HomeAssistant, callback
@@ -17,7 +24,7 @@ from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
 from .api import WebastoConnectUpdateCoordinator
 from .card_install import ensure_card_installed
-from .const import CARD_FILENAME, DOMAIN, PLATFORMS, STARTUP
+from .const import CARD_FILENAME, CARD_WWW_SUBDIR, DOMAIN, PLATFORMS, STARTUP
 
 LOGGER = logging.getLogger(__name__)
 
@@ -132,6 +139,7 @@ async def _async_setup(
             card_version,
             CARD_FILENAME,
         )
+    await _async_ensure_lovelace_card_resource(hass)
 
     coordinator = WebastoConnectUpdateCoordinator(hass, entry)
     try:
@@ -157,6 +165,47 @@ async def _async_setup(
         await _async_migrate_unique_ids(hass, id, device.name, entry)
 
     return coordinator
+
+
+async def _async_ensure_lovelace_card_resource(hass: HomeAssistant) -> None:
+    """Ensure the Webasto Connect card resource exists in Lovelace storage mode."""
+    resource_url = f"/local/{CARD_WWW_SUBDIR}/{CARD_FILENAME}"
+
+    if (lovelace_data := hass.data.get(LOVELACE_DATA)) is None:
+        LOGGER.debug(
+            "Lovelace not loaded yet; cannot auto-register resource %s", resource_url
+        )
+        return
+
+    if lovelace_data.resource_mode != MODE_STORAGE:
+        LOGGER.debug(
+            "Lovelace resource mode is '%s'; skipping auto-registration of %s",
+            lovelace_data.resource_mode,
+            resource_url,
+        )
+        return
+
+    resources = lovelace_data.resources
+    for resource in resources.async_items() or []:
+        if resource.get(CONF_URL) != resource_url:
+            continue
+
+        if resource.get(CONF_TYPE) != "module":
+            await resources.async_update_item(
+                resource["id"],
+                {CONF_RESOURCE_TYPE_WS: "module"},
+            )
+            LOGGER.info(
+                "Updated Lovelace resource type to module for %s", resource_url
+            )
+        else:
+            LOGGER.debug("Lovelace resource already present for %s", resource_url)
+        return
+
+    await resources.async_create_item(
+        {CONF_URL: resource_url, CONF_RESOURCE_TYPE_WS: "module"}
+    )
+    LOGGER.info("Created Lovelace resource for %s", resource_url)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: WebastoConfigEntry) -> bool:
