@@ -12,7 +12,7 @@
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/MTrab/webastoconnect/issues",
     "requirements": [
-        "pywebasto==2.0.0"
+        "pywebasto @ git+https://github.com/MTrab/pywebasto.git@feature/output-main-end-time-property"
     ],
     "version": "1.0.1"
 }
