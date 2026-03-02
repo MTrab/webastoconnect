@@ -1,268 +1,5 @@
-globalThis.__WEBASTO_CONNECT_CARD_VERSION__ = "0.1.0b6";
-
-const WEBASTO_CONNECT_CARD_TRANSLATIONS = {
-  da: {
-    card: {
-      ui: {
-        geo_fence: "Geo-fence",
-        mode: "Modus",
-        timers: "Timere",
-        map: "Kort",
-        active: "Aktiv",
-        inactive: "Ikke aktiv",
-        ending_now: "Slutter nu",
-        left: "tilbage",
-        main_output_missing: "Vælg Main output entity i kortindstillinger",
-        output: "Output",
-        toggle_output: "Skift output",
-      },
-    },
-  },
-  en: {
-    card: {
-      ui: {
-        geo_fence: "Geo-fence",
-        mode: "Mode",
-        timers: "Timers",
-        map: "Map",
-        active: "Active",
-        inactive: "Inactive",
-        ending_now: "Ending now",
-        left: "left",
-        main_output_missing: "Select Main output entity in card settings",
-        output: "Output",
-        toggle_output: "Toggle output",
-      },
-    },
-  },
-};
-
-function getNestedTranslation(obj, path) {
-  if (!obj) return undefined;
-
-  const keys = path.split(".");
-  let result = obj;
-
-  for (const key of keys) {
-    if (result === undefined || result === null || typeof result !== "object") {
-      return undefined;
-    }
-    result = result[key];
-  }
-
-  return typeof result === "string" ? result : undefined;
-}
-
-function resolveLanguage(language) {
-  const raw = String(language || "en").toLowerCase();
-  if (WEBASTO_CONNECT_CARD_TRANSLATIONS[raw]) return raw;
-
-  const short = raw.split("-")[0];
-  if (WEBASTO_CONNECT_CARD_TRANSLATIONS[short]) return short;
-
-  return "en";
-}
-
-function localize(hass, key, vars = {}) {
-  const lang = resolveLanguage(hass?.language);
-
-  let translated =
-    getNestedTranslation(WEBASTO_CONNECT_CARD_TRANSLATIONS[lang], key) ??
-    getNestedTranslation(WEBASTO_CONNECT_CARD_TRANSLATIONS.en, key) ??
-    key;
-
-  Object.entries(vars).forEach(([name, value]) => {
-    translated = translated.replace(`{${name}}`, String(value));
-  });
-
-  return translated;
-}
-
-function escapeAttr(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
-
-class WebastoConnectCard extends HTMLElement {
-  static getConfigElement() {
-    return document.createElement("webasto-connect-card-editor");
-  }
-
-  static getStubConfig() {
-    return {
-      main_output_entity: "switch.webasto_main_output",
-      ventilation_mode_entity: "switch.webasto_ventilation_mode",
-      end_time_entity: "sensor.webasto_main_output_end_time",
-      temperature_entity: "sensor.webasto_temperature",
-      battery_entity: "sensor.webasto_battery_voltage",
-      location_entity: "device_tracker.webasto_location",
-    };
-  }
-
-  setConfig(config) {
-    if (!config.main_output_entity) {
-      throw new Error("Missing required config: main_output_entity");
-    }
-    this._config = {
-      ventilation_mode_entity: config.ventilation_mode_entity,
-      end_time_entity: config.end_time_entity,
-      ...config,
-    };
-  }
-
-  set hass(hass) {
-    this._hass = hass;
-    this._render();
-  }
-
-  connectedCallback() {
-    if (!this.shadowRoot) {
-      this.attachShadow({ mode: "open" });
-    }
-    this._render();
-  }
-
-  _getState(entityId) {
-    return entityId ? this._hass?.states?.[entityId] : undefined;
-  }
-
-  _parseEndDate(value) {
-    if (value === null || value === undefined || value === "") {
-      return null;
-    }
-
-    // Accept both ISO datetime and Unix timestamp (seconds or milliseconds).
-    const numeric = Number(value);
-    if (Number.isFinite(numeric)) {
-      const millis = numeric < 1e12 ? numeric * 1000 : numeric;
-      const tsDate = new Date(millis);
-      return Number.isNaN(tsDate.getTime()) ? null : tsDate;
-    }
-
-    const date = new Date(String(value));
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-
-  _computeLabel(mainEntity, endEntity) {
-    if (!mainEntity || mainEntity.state !== "on") {
-      return localize(this._hass, "card.ui.inactive");
-    }
-
-    if (
-      !endEntity ||
-      !endEntity.state ||
-      endEntity.state === "unknown" ||
-      endEntity.state === "unavailable"
-    ) {
-      return localize(this._hass, "card.ui.active");
-    }
-
-    const end = this._parseEndDate(endEntity.state);
-    if (!end) {
-      return localize(this._hass, "card.ui.active");
-    }
-
-    const leftMinutes = Math.ceil((end.getTime() - Date.now()) / 60000);
-    if (leftMinutes <= 0) {
-      return localize(this._hass, "card.ui.ending_now");
-    }
-    const hours = Math.floor(leftMinutes / 60);
-    const minutes = leftMinutes % 60;
-    return `${hours}:${String(minutes).padStart(2, "0")} ${localize(this._hass, "card.ui.left")}`;
-  }
-
-  _computeOutputName(mainOutputState) {
-    const friendlyName = mainOutputState?.attributes?.friendly_name;
-    if (typeof friendlyName === "string" && friendlyName.trim() !== "") {
-      return friendlyName;
-    }
-    return localize(this._hass, "card.ui.output");
-  }
-
-  _toggleMainOutput() {
-    const entityId = this._config?.main_output_entity;
-    if (!this._hass || !entityId || !this._hass.states?.[entityId]) {
-      console.warn(
-        "[webasto-connect-card] Missing or unavailable main_output_entity:",
-        entityId
-      );
-      return;
-    }
-    this._hass.callService("homeassistant", "toggle", {
-      entity_id: entityId,
-    });
-  }
-
-  _stateWithUnit(entity) {
-    if (!entity) {
-      return "--";
-    }
-    const state = entity.state;
-    if (state === "unknown" || state === "unavailable") {
-      return "--";
-    }
-    const unit = entity.attributes?.unit_of_measurement;
-    return unit ? `${state} ${unit}` : String(state);
-  }
-
-  _locationText(entity) {
-    if (!entity) {
-      return "--";
-    }
-    const state = String(entity.state ?? "");
-    if (
-      state !== "" &&
-      state !== "unknown" &&
-      state !== "unavailable" &&
-      state !== "not_home"
-    ) {
-      return state;
-    }
-
-    const lat = entity.attributes?.latitude;
-    const lon = entity.attributes?.longitude;
-    if (typeof lat === "number" && typeof lon === "number") {
-      return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-    }
-
-    return "--";
-  }
-
-  _render() {
-    if (!this.shadowRoot || !this._config || !this._hass) {
-      return;
-    }
-
-    const main = this._getState(this._config.main_output_entity);
-    const end = this._getState(this._config.end_time_entity);
-    const temp = this._getState(this._config.temperature_entity);
-    const battery = this._getState(this._config.battery_entity);
-    const location = this._getState(this._config.location_entity);
-
-    const isMainAvailable = Boolean(main);
-    const isOn = isMainAvailable && main.state === "on";
-    const ringColor = isOn ? "#d33131" : "#c5cfdf";
-    const outputName = this._computeOutputName(main);
-    const label = isMainAvailable
-      ? this._computeLabel(main, end)
-      : localize(this._hass, "card.ui.main_output_missing");
-    const tempText = this._stateWithUnit(temp);
-    const batteryText = this._stateWithUnit(battery);
-    const locationText = this._locationText(location);
-    const icon =
-      this._config.center_icon ||
-      main?.attributes?.icon ||
-      "mdi:car-defrost-rear";
-    const titleGeoFence = "";
-    const titleMode = localize(this._hass, "card.ui.mode");
-    const titleTimers = localize(this._hass, "card.ui.timers");
-    const titleMap = localize(this._hass, "card.ui.map");
-    const toggleLabel = localize(this._hass, "card.ui.toggle_output");
-
-    this.shadowRoot.innerHTML = `
+globalThis.__WEBASTO_CONNECT_CARD_VERSION__ = "0.1.0b19";
+var x={card:{ui:{geo_fence:"Geo-fence",mode:"Modus",timers:"Timere",map:"Kort",active:"Aktiv",inactive:"Ikke aktiv",ending_now:"Slutter nu",left:"tilbage",main_output_missing:"V\xE6lg Main output entity i kortindstillinger",output:"Output",toggle_output:"Skift output",close:"Luk",map_unavailable:"Lokation er ikke tilg\xE6ngelig"}}};var v={card:{ui:{geo_fence:"Geo-fence",mode:"Mode",timers:"Timers",map:"Map",active:"Active",inactive:"Inactive",ending_now:"Ending now",left:"left",main_output_missing:"Select Main output entity in card settings",output:"Output",toggle_output:"Toggle output",close:"Close",map_unavailable:"Location is unavailable"}}};var p={da:x,en:v};function w(o,t){if(!o)return;let e=t.split("."),i=o;for(let a of e){if(i==null||typeof i!="object")return;i=i[a]}return typeof i=="string"?i:void 0}function I(o){let t=String(o||"en").toLowerCase();if(p[t])return t;let e=t.split("-")[0];return p[e]?e:"en"}function n(o,t,e={}){let i=I(o?.language),a=w(p[i],t)??w(p.en,t)??t;return Object.entries(e).forEach(([l,c])=>{a=a.replace(`{${l}}`,String(c))}),a}function r(o){return String(o??"").replaceAll("&","&amp;").replaceAll('"',"&quot;").replaceAll("<","&lt;").replaceAll(">","&gt;")}var g=class extends HTMLElement{static getConfigElement(){return document.createElement("webasto-connect-card-editor")}static getStubConfig(){return{main_output_entity:"switch.webasto_main_output",ventilation_mode_entity:"switch.webasto_ventilation_mode",end_time_entity:"sensor.webasto_main_output_end_time",temperature_entity:"sensor.webasto_temperature",battery_entity:"sensor.webasto_battery_voltage",location_entity:"device_tracker.webasto_location"}}setConfig(t){if(!t.main_output_entity)throw new Error("Missing required config: main_output_entity");this._config={ventilation_mode_entity:t.ventilation_mode_entity,end_time_entity:t.end_time_entity,...t}}set hass(t){this._hass=t,this._render()}connectedCallback(){this.shadowRoot||this.attachShadow({mode:"open"}),this._render()}_getState(t){return t?this._hass?.states?.[t]:void 0}_parseEndDate(t){if(t==null||t==="")return null;let e=Number(t);if(Number.isFinite(e)){let a=e<1e12?e*1e3:e,l=new Date(a);return Number.isNaN(l.getTime())?null:l}let i=new Date(String(t));return Number.isNaN(i.getTime())?null:i}_computeLabel(t,e){if(!t||t.state!=="on")return n(this._hass,"card.ui.inactive");if(!e||!e.state||e.state==="unknown"||e.state==="unavailable")return n(this._hass,"card.ui.active");let i=this._parseEndDate(e.state);if(!i)return n(this._hass,"card.ui.active");let a=Math.ceil((i.getTime()-Date.now())/6e4);if(a<=0)return n(this._hass,"card.ui.ending_now");let l=Math.floor(a/60),c=a%60;return`${l}:${String(c).padStart(2,"0")} ${n(this._hass,"card.ui.left")}`}_computeOutputName(t){let e=t?.attributes?.friendly_name;return typeof e=="string"&&e.trim()!==""?e:n(this._hass,"card.ui.output")}_toggleMainOutput(){let t=this._config?.main_output_entity;if(!this._hass||!t||!this._hass.states?.[t]){console.warn("[webasto-connect-card] Missing or unavailable main_output_entity:",t);return}this._hass.callService("homeassistant","toggle",{entity_id:t})}_stateWithUnit(t){if(!t)return"--";let e=t.state;if(e==="unknown"||e==="unavailable")return"--";let i=t.attributes?.unit_of_measurement;return i?`${e} ${i}`:String(e)}_locationText(t){if(!t)return"--";let e=String(t.state??"");if(e!==""&&e!=="unknown"&&e!=="unavailable"&&e!=="not_home")return e;let i=t.attributes?.latitude,a=t.attributes?.longitude;return typeof i=="number"&&typeof a=="number"?`${i.toFixed(5)}, ${a.toFixed(5)}`:"--"}_isMapEnabled(t,e){return!t||!t.startsWith("device_tracker.")||!e?!1:e.state!=="unknown"&&e.state!=="unavailable"}_openMapPopup(){let t=this._config?.location_entity,e=this._getState(t);this._isMapEnabled(t,e)&&(this._mapPopupOpen=!0,this._render())}_closeMapPopup(){this._mapPopupOpen=!1,this._render()}async _renderMapPopup(t){let e=this.shadowRoot?.getElementById("map-card-host");if(!(!e||!this._hass||!t)){e.innerHTML="";try{let a=await(await window.loadCardHelpers?.())?.createCardElement?.({type:"map",entities:[t]});if(!a){e.innerHTML=`<div class="map-unavailable">${r(n(this._hass,"card.ui.map_unavailable"))}</div>`;return}a.hass=this._hass,a.style.display="block",a.style.height="360px",e.appendChild(a)}catch{e.innerHTML=`<div class="map-unavailable">${r(n(this._hass,"card.ui.map_unavailable"))}</div>`}}}_render(){if(!this.shadowRoot||!this._config||!this._hass)return;let t=this._getState(this._config.main_output_entity),e=this._getState(this._config.end_time_entity),i=this._getState(this._config.temperature_entity),a=this._getState(this._config.battery_entity),l=this._getState(this._config.location_entity),c=!!t,y=c&&t.state==="on"?"#d33131":"#c5cfdf",k=this._computeOutputName(t),$=c?this._computeLabel(t,e):n(this._hass,"card.ui.main_output_missing"),M=this._stateWithUnit(i),S=this._stateWithUnit(a),T=this._locationText(l),E=this._config.center_icon||t?.attributes?.icon||"mdi:car-defrost-rear",z="",C=n(this._hass,"card.ui.mode"),q=n(this._hass,"card.ui.timers"),u=n(this._hass,"card.ui.map"),L=n(this._hass,"card.ui.toggle_output"),d=this._isMapEnabled(this._config.location_entity,l),O=d?"map-enabled":"map-disabled",N=d?"0":"-1",P=d?"false":"true",b=this._mapPopupOpen&&d,R=n(this._hass,"card.ui.close");this.shadowRoot.innerHTML=`
       <style>
         :host { display: block; }
         .wrapper {
@@ -289,8 +26,22 @@ class WebastoConnectCard extends HTMLElement {
           padding: 16px;
           box-sizing: border-box;
         }
-        .q.tr, .q.br { justify-content: flex-end; text-align: right; }
-        .q.bl, .q.br { align-items: flex-end; }
+        .q.tr, .q.br {
+          justify-content: flex-end;
+          text-align: right;
+        }
+        .q.bl, .q.br {
+          align-items: flex-end;
+        }
+        .q.map-enabled {
+          cursor: pointer;
+        }
+        .q.map-enabled:hover {
+          filter: brightness(1.03);
+        }
+        .q.map-disabled {
+          opacity: 0.6;
+        }
         .q.tl { left: 0; top: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
         .q.tr { right: 0; top: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
         .q.bl { left: 0; bottom: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
@@ -322,7 +73,7 @@ class WebastoConnectCard extends HTMLElement {
           border-radius: 50%;
           background: #efefef;
           box-shadow: 0 0 0 10px #ffffff;
-          border: 10px solid ${ringColor};
+          border: 10px solid ${y};
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -331,8 +82,16 @@ class WebastoConnectCard extends HTMLElement {
           user-select: none;
           transition: border-color 150ms ease;
         }
-        .icon { color: #2a4677; margin-bottom: 10px; }
-        .name { color: #20334d; font-size: 36px; line-height: 1.1; font-weight: 500; }
+        .icon {
+          color: #2a4677;
+          margin-bottom: 10px;
+        }
+        .name {
+          color: #20334d;
+          font-size: 36px;
+          line-height: 1.1;
+          font-weight: 500;
+        }
         .label {
           color: #20334d;
           font-size: 24px;
@@ -371,133 +130,95 @@ class WebastoConnectCard extends HTMLElement {
           gap: 8px;
           word-break: break-word;
         }
+        .map-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.45);
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          box-sizing: border-box;
+        }
+        .map-modal {
+          width: min(640px, 100%);
+          background: var(--card-background-color, #fff);
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+        }
+        .map-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 14px;
+          border-bottom: 1px solid var(--divider-color, #ddd);
+          color: var(--primary-text-color, #111);
+          font-size: 15px;
+        }
+        .map-modal-close {
+          border: 0;
+          border-radius: 8px;
+          padding: 6px 10px;
+          background: var(--secondary-background-color, #eee);
+          color: var(--primary-text-color, #111);
+          cursor: pointer;
+          font: inherit;
+        }
+        .map-card-host {
+          height: 360px;
+          background: var(--card-background-color, #fff);
+        }
+        .map-card-host > * {
+          display: block;
+        }
+        .map-unavailable {
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--secondary-text-color, #666);
+          font-size: 14px;
+          padding: 16px;
+          box-sizing: border-box;
+          text-align: center;
+        }
       </style>
       <div class="wrapper">
         <ha-card>
-          <div class="q tl">${titleGeoFence}</div>
-          <div class="q tr">${titleMode}</div>
-          <div class="q bl">${titleTimers}</div>
-          <div class="q br">${titleMap}</div>
+          <div class="q tl">${z}</div>
+          <div class="q tr">${C}</div>
+          <div class="q bl">${q}</div>
+          <div class="q br ${O}" id="map-action" role="button" tabindex="${N}" aria-disabled="${P}">${u}</div>
           <div class="divider-v"></div>
           <div class="divider-h"></div>
-          <div class="center-wrap" id="center-toggle" role="button" tabindex="0" aria-label="${toggleLabel}">
-            <ha-icon class="icon" icon="${icon}" style="--mdc-icon-size: 96px;"></ha-icon>
-            <div class="name">${outputName}</div>
-            <div class="label">${label}</div>
+          <div class="center-wrap" id="center-toggle" role="button" tabindex="0" aria-label="${L}">
+            <ha-icon class="icon" icon="${E}" style="--mdc-icon-size: 96px;"></ha-icon>
+            <div class="name">${k}</div>
+            <div class="label">${$}</div>
           </div>
         </ha-card>
         <div class="meta">
           <div class="meta-row">
-            <span class="meta-item"><ha-icon icon="mdi:thermometer" style="--mdc-icon-size: 24px;"></ha-icon>${tempText}</span>
-            <span class="meta-item"><ha-icon icon="mdi:car-battery" style="--mdc-icon-size: 24px;"></ha-icon>${batteryText}</span>
+            <span class="meta-item"><ha-icon icon="mdi:thermometer" style="--mdc-icon-size: 24px;"></ha-icon>${M}</span>
+            <span class="meta-item"><ha-icon icon="mdi:car-battery" style="--mdc-icon-size: 24px;"></ha-icon>${S}</span>
           </div>
-          <div class="meta-location"><ha-icon icon="mdi:map-marker" style="--mdc-icon-size: 24px;"></ha-icon>${locationText}</div>
+          <div class="meta-location"><ha-icon icon="mdi:map-marker" style="--mdc-icon-size: 24px;"></ha-icon>${T}</div>
         </div>
       </div>
-    `;
-
-    const center = this.shadowRoot.getElementById("center-toggle");
-    if (center) {
-      center.onclick = () => this._toggleMainOutput();
-      center.onkeydown = (ev) => {
-        if (ev.key === "Enter" || ev.key === " ") {
-          ev.preventDefault();
-          this._toggleMainOutput();
-        }
-      };
-    }
-  }
-
-  getCardSize() {
-    return 4;
-  }
-}
-
-class WebastoConnectCardEditor extends HTMLElement {
-  setConfig(config) {
-    this._config = { ...config };
-    this._render();
-  }
-
-  set hass(hass) {
-    this._hass = hass;
-    if (!this._suggestionsLoaded) {
-      this._suggestionsLoaded = true;
-      this._loadSuggestions();
-    }
-    this._render();
-  }
-
-  connectedCallback() {
-    if (!this.shadowRoot) {
-      this.attachShadow({ mode: "open" });
-    }
-    this._render();
-  }
-
-  async _loadSuggestions() {
-    if (!this._hass) {
-      return;
-    }
-
-    try {
-      const registry = await this._hass.callWS({
-        type: "config/entity_registry/list",
-      });
-      const webastoEntities = registry
-        .filter((entry) => entry.platform === "webastoconnect" && !entry.hidden_by)
-        .map((entry) => entry.entity_id);
-
-      this._entitySuggestions = [...new Set(webastoEntities)].sort();
-    } catch (_err) {
-      const fallback = Object.keys(this._hass.states || {}).filter((entityId) =>
-        entityId.includes("webasto")
-      );
-      this._entitySuggestions = [...new Set(fallback)].sort();
-    }
-
-    this._render();
-  }
-
-  _datalistOptions(domains) {
-    const suggestions = this._entitySuggestions || [];
-    return suggestions
-      .filter((entityId) => domains.includes(entityId.split(".")[0]))
-      .map((entityId) => `<option value="${escapeAttr(entityId)}"></option>`)
-      .join("");
-  }
-
-  _handleInput(ev) {
-    const field = ev.target?.dataset?.field;
-    if (!field) {
-      return;
-    }
-
-    const value = String(ev.target.value || "").trim();
-    const next = { ...(this._config || {}) };
-    if (value === "") {
-      delete next[field];
-    } else {
-      next[field] = value;
-    }
-
-    this._config = next;
-    this.dispatchEvent(
-      new CustomEvent("config-changed", {
-        detail: { config: next },
-        bubbles: true,
-        composed: true,
-      })
-    );
-  }
-
-  _render() {
-    if (!this.shadowRoot) {
-      return;
-    }
-
-    const cfg = this._config || {};
-    this.shadowRoot.innerHTML = `
+      ${b?`
+      <div class="map-modal-backdrop" id="map-modal-backdrop">
+        <div class="map-modal" role="dialog" aria-modal="true" aria-label="${u}">
+          <div class="map-modal-header">
+            <span>${u}</span>
+            <button class="map-modal-close" id="map-modal-close">${R}</button>
+          </div>
+          <div class="map-card-host" id="map-card-host"></div>
+        </div>
+      </div>
+      `:""}
+    `;let h=this.shadowRoot.getElementById("center-toggle");h&&(h.onclick=()=>this._toggleMainOutput(),h.onkeydown=s=>{(s.key==="Enter"||s.key===" ")&&(s.preventDefault(),this._toggleMainOutput())});let m=this.shadowRoot.getElementById("map-action");if(m&&d&&(m.onclick=()=>this._openMapPopup(),m.onkeydown=s=>{(s.key==="Enter"||s.key===" ")&&(s.preventDefault(),this._openMapPopup())}),b){this._renderMapPopup(this._config.location_entity);let s=this.shadowRoot.getElementById("map-modal-close");s&&(s.onclick=()=>this._closeMapPopup());let _=this.shadowRoot.getElementById("map-modal-backdrop");_&&(_.onclick=A=>{A.target===_&&this._closeMapPopup()})}}getCardSize(){return 4}},f=class extends HTMLElement{setConfig(t){this._config={...t},this._render()}set hass(t){this._hass=t,this._suggestionsLoaded||(this._suggestionsLoaded=!0,this._loadSuggestions()),this._render()}connectedCallback(){this.shadowRoot||this.attachShadow({mode:"open"}),this._render()}async _loadSuggestions(){if(this._hass){try{let e=(await this._hass.callWS({type:"config/entity_registry/list"})).filter(i=>i.platform==="webastoconnect"&&!i.hidden_by).map(i=>i.entity_id);this._entitySuggestions=[...new Set(e)].sort()}catch{let e=Object.keys(this._hass.states||{}).filter(i=>i.includes("webasto"));this._entitySuggestions=[...new Set(e)].sort()}this._render()}}_datalistOptions(t){return(this._entitySuggestions||[]).filter(i=>t.includes(i.split(".")[0])).map(i=>`<option value="${r(i)}"></option>`).join("")}_handleInput(t){let e=t.target?.dataset?.field;if(!e)return;let i=String(t.target.value||"").trim(),a={...this._config||{}};i===""?delete a[e]:a[e]=i,this._config=a,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:a},bubbles:!0,composed:!0}))}_render(){if(!this.shadowRoot)return;let t=this._config||{};this.shadowRoot.innerHTML=`
       <style>
         :host {
           display: block;
@@ -531,50 +252,29 @@ class WebastoConnectCardEditor extends HTMLElement {
       </style>
       <div class="grid">
         <label>Main output entity
-          <input data-field="main_output_entity" list="webasto-options-switch" value="${escapeAttr(cfg.main_output_entity)}" placeholder="switch.webasto_main_output" />
+          <input data-field="main_output_entity" list="webasto-options-switch" value="${r(t.main_output_entity)}" placeholder="switch.webasto_main_output" />
         </label>
         <label>Ventilation mode entity
-          <input data-field="ventilation_mode_entity" list="webasto-options-switch" value="${escapeAttr(cfg.ventilation_mode_entity)}" placeholder="switch.webasto_ventilation_mode" />
+          <input data-field="ventilation_mode_entity" list="webasto-options-switch" value="${r(t.ventilation_mode_entity)}" placeholder="switch.webasto_ventilation_mode" />
         </label>
         <label>End-time sensor entity
-          <input data-field="end_time_entity" list="webasto-options-sensor" value="${escapeAttr(cfg.end_time_entity)}" placeholder="sensor.webasto_main_output_end_time" />
+          <input data-field="end_time_entity" list="webasto-options-sensor" value="${r(t.end_time_entity)}" placeholder="sensor.webasto_main_output_end_time" />
         </label>
         <label>Temperature entity
-          <input data-field="temperature_entity" list="webasto-options-sensor" value="${escapeAttr(cfg.temperature_entity)}" placeholder="sensor.webasto_temperature" />
+          <input data-field="temperature_entity" list="webasto-options-sensor" value="${r(t.temperature_entity)}" placeholder="sensor.webasto_temperature" />
         </label>
         <label>Battery entity
-          <input data-field="battery_entity" list="webasto-options-sensor" value="${escapeAttr(cfg.battery_entity)}" placeholder="sensor.webasto_battery_voltage" />
+          <input data-field="battery_entity" list="webasto-options-sensor" value="${r(t.battery_entity)}" placeholder="sensor.webasto_battery_voltage" />
         </label>
         <label>Location entity
-          <input data-field="location_entity" list="webasto-options-location" value="${escapeAttr(cfg.location_entity)}" placeholder="device_tracker.webasto_location" />
+          <input data-field="location_entity" list="webasto-options-location" value="${r(t.location_entity)}" placeholder="device_tracker.webasto_location" />
         </label>
         <label>Center icon
-          <input data-field="center_icon" value="${escapeAttr(cfg.center_icon)}" placeholder="mdi:car-defrost-rear" />
+          <input data-field="center_icon" value="${r(t.center_icon)}" placeholder="mdi:car-defrost-rear" />
         </label>
         <div class="hint">Suggestions are limited to entities from the Webasto Connect integration.</div>
       </div>
       <datalist id="webasto-options-switch">${this._datalistOptions(["switch"])}</datalist>
       <datalist id="webasto-options-sensor">${this._datalistOptions(["sensor"])}</datalist>
-      <datalist id="webasto-options-location">${this._datalistOptions(["sensor", "device_tracker"])}</datalist>
-    `;
-
-    this.shadowRoot.querySelectorAll("input").forEach((input) => {
-      input.addEventListener("change", (ev) => this._handleInput(ev));
-    });
-  }
-}
-
-if (!customElements.get("webasto-connect-card")) {
-  customElements.define("webasto-connect-card", WebastoConnectCard);
-}
-if (!customElements.get("webasto-connect-card-editor")) {
-  customElements.define("webasto-connect-card-editor", WebastoConnectCardEditor);
-}
-
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "webasto-connect-card",
-  name: "Webasto Connect Card",
-  description: "Webasto Connect card with center toggle for main output",
-  preview: true,
-});
+      <datalist id="webasto-options-location">${this._datalistOptions(["sensor","device_tracker"])}</datalist>
+    `,this.shadowRoot.querySelectorAll("input").forEach(e=>{e.addEventListener("change",i=>this._handleInput(i))})}};customElements.get("webasto-connect-card")||customElements.define("webasto-connect-card",g);customElements.get("webasto-connect-card-editor")||customElements.define("webasto-connect-card-editor",f);window.customCards=window.customCards||[];window.customCards.push({type:"webasto-connect-card",name:"Webasto Connect Card",description:"Webasto Connect card with center toggle for main output",preview:!0});

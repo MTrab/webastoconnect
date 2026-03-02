@@ -11,7 +11,9 @@
       "left": "left",
       "main_output_missing": "Select Main output entity in card settings",
       "output": "Output",
-      "toggle_output": "Toggle output"
+      "toggle_output": "Toggle output",
+      "close": "Close",
+      "map_unavailable": "Location is unavailable"
     }
   }
 }

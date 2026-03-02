@@ -11,7 +11,9 @@
       "left": "tilbage",
       "main_output_missing": "Vælg Main output entity i kortindstillinger",
       "output": "Output",
-      "toggle_output": "Skift output"
+      "toggle_output": "Skift output",
+      "close": "Luk",
+      "map_unavailable": "Lokation er ikke tilgængelig"
     }
   }
 }

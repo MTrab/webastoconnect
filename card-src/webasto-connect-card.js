@@ -143,6 +143,59 @@ class WebastoConnectCard extends HTMLElement {
     return "--";
   }
 
+  _isMapEnabled(locationEntityId, locationEntity) {
+    if (!locationEntityId || !locationEntityId.startsWith("device_tracker.")) {
+      return false;
+    }
+    if (!locationEntity) {
+      return false;
+    }
+    return locationEntity.state !== "unknown" && locationEntity.state !== "unavailable";
+  }
+
+  _openMapPopup() {
+    const entityId = this._config?.location_entity;
+    const location = this._getState(entityId);
+    if (!this._isMapEnabled(entityId, location)) {
+      return;
+    }
+    this._mapPopupOpen = true;
+    this._render();
+  }
+
+  _closeMapPopup() {
+    this._mapPopupOpen = false;
+    this._render();
+  }
+
+  async _renderMapPopup(entityId) {
+    const host = this.shadowRoot?.getElementById("map-card-host");
+    if (!host || !this._hass || !entityId) {
+      return;
+    }
+
+    host.innerHTML = "";
+    try {
+      const helpers = await window.loadCardHelpers?.();
+      const mapCard = await helpers?.createCardElement?.({
+        type: "map",
+        entities: [entityId],
+      });
+
+      if (!mapCard) {
+        host.innerHTML = `<div class="map-unavailable">${escapeAttr(localize(this._hass, "card.ui.map_unavailable"))}</div>`;
+        return;
+      }
+
+      mapCard.hass = this._hass;
+      mapCard.style.display = "block";
+      mapCard.style.height = "360px";
+      host.appendChild(mapCard);
+    } catch (_err) {
+      host.innerHTML = `<div class="map-unavailable">${escapeAttr(localize(this._hass, "card.ui.map_unavailable"))}</div>`;
+    }
+  }
+
   _render() {
     if (!this.shadowRoot || !this._config || !this._hass) {
       return;
@@ -173,6 +226,12 @@ class WebastoConnectCard extends HTMLElement {
     const titleTimers = localize(this._hass, "card.ui.timers");
     const titleMap = localize(this._hass, "card.ui.map");
     const toggleLabel = localize(this._hass, "card.ui.toggle_output");
+    const mapEnabled = this._isMapEnabled(this._config.location_entity, location);
+    const mapClass = mapEnabled ? "map-enabled" : "map-disabled";
+    const mapTabIndex = mapEnabled ? "0" : "-1";
+    const mapAriaDisabled = mapEnabled ? "false" : "true";
+    const mapPopup = this._mapPopupOpen && mapEnabled;
+    const closeText = localize(this._hass, "card.ui.close");
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -207,6 +266,15 @@ class WebastoConnectCard extends HTMLElement {
         }
         .q.bl, .q.br {
           align-items: flex-end;
+        }
+        .q.map-enabled {
+          cursor: pointer;
+        }
+        .q.map-enabled:hover {
+          filter: brightness(1.03);
+        }
+        .q.map-disabled {
+          opacity: 0.6;
         }
         .q.tl { left: 0; top: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
         .q.tr { right: 0; top: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
@@ -296,13 +364,67 @@ class WebastoConnectCard extends HTMLElement {
           gap: 8px;
           word-break: break-word;
         }
+        .map-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.45);
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          box-sizing: border-box;
+        }
+        .map-modal {
+          width: min(640px, 100%);
+          background: var(--card-background-color, #fff);
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+        }
+        .map-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 14px;
+          border-bottom: 1px solid var(--divider-color, #ddd);
+          color: var(--primary-text-color, #111);
+          font-size: 15px;
+        }
+        .map-modal-close {
+          border: 0;
+          border-radius: 8px;
+          padding: 6px 10px;
+          background: var(--secondary-background-color, #eee);
+          color: var(--primary-text-color, #111);
+          cursor: pointer;
+          font: inherit;
+        }
+        .map-card-host {
+          height: 360px;
+          background: var(--card-background-color, #fff);
+        }
+        .map-card-host > * {
+          display: block;
+        }
+        .map-unavailable {
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--secondary-text-color, #666);
+          font-size: 14px;
+          padding: 16px;
+          box-sizing: border-box;
+          text-align: center;
+        }
       </style>
       <div class="wrapper">
         <ha-card>
           <div class="q tl">${titleGeoFence}</div>
           <div class="q tr">${titleMode}</div>
           <div class="q bl">${titleTimers}</div>
-          <div class="q br">${titleMap}</div>
+          <div class="q br ${mapClass}" id="map-action" role="button" tabindex="${mapTabIndex}" aria-disabled="${mapAriaDisabled}">${titleMap}</div>
           <div class="divider-v"></div>
           <div class="divider-h"></div>
           <div class="center-wrap" id="center-toggle" role="button" tabindex="0" aria-label="${toggleLabel}">
@@ -319,6 +441,17 @@ class WebastoConnectCard extends HTMLElement {
           <div class="meta-location"><ha-icon icon="mdi:map-marker" style="--mdc-icon-size: 24px;"></ha-icon>${locationText}</div>
         </div>
       </div>
+      ${mapPopup ? `
+      <div class="map-modal-backdrop" id="map-modal-backdrop">
+        <div class="map-modal" role="dialog" aria-modal="true" aria-label="${titleMap}">
+          <div class="map-modal-header">
+            <span>${titleMap}</span>
+            <button class="map-modal-close" id="map-modal-close">${closeText}</button>
+          </div>
+          <div class="map-card-host" id="map-card-host"></div>
+        </div>
+      </div>
+      ` : ""}
     `;
 
     const center = this.shadowRoot.getElementById("center-toggle");
@@ -330,6 +463,35 @@ class WebastoConnectCard extends HTMLElement {
           this._toggleMainOutput();
         }
       };
+    }
+
+    const mapAction = this.shadowRoot.getElementById("map-action");
+    if (mapAction && mapEnabled) {
+      mapAction.onclick = () => this._openMapPopup();
+      mapAction.onkeydown = (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          this._openMapPopup();
+        }
+      };
+    }
+
+    if (mapPopup) {
+      void this._renderMapPopup(this._config.location_entity);
+
+      const close = this.shadowRoot.getElementById("map-modal-close");
+      if (close) {
+        close.onclick = () => this._closeMapPopup();
+      }
+
+      const backdrop = this.shadowRoot.getElementById("map-modal-backdrop");
+      if (backdrop) {
+        backdrop.onclick = (ev) => {
+          if (ev.target === backdrop) {
+            this._closeMapPopup();
+          }
+        };
+      }
     }
   }
 
