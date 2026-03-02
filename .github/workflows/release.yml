@@ -22,18 +22,19 @@ jobs:
       - name: Update manifest.json version to ${{ github.event.release.tag_name }}
         run: |
           python3 ${{ github.workspace }}/.github/scripts/update_hacs_manifest.py --version ${{ github.event.release.tag_name }} --path /custom_components/webastoconnect/
-      - name: Commit manifest update
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add ./custom_components/webastoconnect/manifest.json
-          git commit -m "Updated manifest.json"
-          git push origin HEAD:main
       - name: Build Webasto Connect Card
         run: |
           cd card-src
-          npm install
+          npm ci
           npm run build
+      - name: Commit manifest and card build update
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add ./custom_components/webastoconnect/manifest.json ./custom_components/webastoconnect/card/webasto-connect-card.js
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "release: update manifest and card build"
+          git push origin HEAD:main
       - name: Create zip
         run: |
           cd custom_components/webastoconnect
