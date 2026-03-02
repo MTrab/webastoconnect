@@ -7,11 +7,9 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import callback
-from homeassistant.helpers.event import async_call_later
 from pywebasto import WebastoConnect
 from pywebasto.exceptions import UnauthorizedException
 
-from . import async_setup_entry, async_unload_entry
 from .const import DOMAIN
 
 LOGGER = logging.getLogger(__name__)
@@ -125,13 +123,6 @@ class WebastoConnectConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class WebastoConnectOptionsFlow(config_entries.OptionsFlow):
     """Handle Webasto Connect options."""
 
-    async def _do_update(
-        self, *args, **kwargs  # pylint: disable=unused-argument
-    ) -> None:
-        """Update after settings change."""
-        await async_unload_entry(self.hass, self.config_entry)
-        await async_setup_entry(self.hass, self.config_entry)
-
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
@@ -150,7 +141,6 @@ class WebastoConnectOptionsFlow(config_entries.OptionsFlow):
                 errors["base"] = "invalid_auth"
 
             if "base" not in errors:
-                async_call_later(self.hass, 2, self._do_update)
                 return self.async_create_entry(
                     title=user_input[CONF_EMAIL], data=user_input
                 )
