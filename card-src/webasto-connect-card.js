@@ -87,7 +87,7 @@ class WebastoConnectCard extends HTMLElement {
       );
       return;
     }
-    this._hass.callService("switch", "toggle", {
+    this._hass.callService("homeassistant", "toggle", {
       entity_id: entityId,
     });
   }
