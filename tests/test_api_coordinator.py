@@ -1,5 +1,6 @@
 """Tests for Webasto coordinator update handling."""
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -20,6 +21,7 @@ def _build_coordinator(update_mock: AsyncMock) -> WebastoConnectUpdateCoordinato
     coordinator = object.__new__(WebastoConnectUpdateCoordinator)
     coordinator.cloud = SimpleNamespace(update=update_mock)
     coordinator._consecutive_unauthorized = 0
+    coordinator._cloud_operation_lock = asyncio.Lock()
     return coordinator
 
 

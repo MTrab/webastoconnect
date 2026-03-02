@@ -9,6 +9,11 @@ from custom_components.webastoconnect.number import WebastoConnectNumber
 from custom_components.webastoconnect.switch import WebastoConnectSwitch
 
 
+async def _passthrough_cloud_call(func, *args):
+    """Execute cloud calls directly for write-path unit tests."""
+    return await func(*args)
+
+
 @pytest.mark.asyncio
 async def test_switch_turn_on_updates_listeners_without_refresh() -> None:
     """Switch turn_on should notify listeners and skip extra refresh."""
@@ -16,6 +21,7 @@ async def test_switch_turn_on_updates_listeners_without_refresh() -> None:
     coordinator = SimpleNamespace(
         async_update_listeners=Mock(),
         async_refresh=AsyncMock(),
+        async_execute_cloud_call=AsyncMock(side_effect=_passthrough_cloud_call),
     )
     switch = object.__new__(WebastoConnectSwitch)
     switch.entity_id = "switch.test"
@@ -27,6 +33,7 @@ async def test_switch_turn_on_updates_listeners_without_refresh() -> None:
     await switch.async_turn_on()
 
     command_fn.assert_awaited_once_with(switch._cloud, switch._cloud.devices[1], True)
+    coordinator.async_execute_cloud_call.assert_awaited_once()
     coordinator.async_update_listeners.assert_called_once()
     coordinator.async_refresh.assert_not_called()
 
@@ -38,6 +45,7 @@ async def test_switch_turn_off_updates_listeners_without_refresh() -> None:
     coordinator = SimpleNamespace(
         async_update_listeners=Mock(),
         async_refresh=AsyncMock(),
+        async_execute_cloud_call=AsyncMock(side_effect=_passthrough_cloud_call),
     )
     switch = object.__new__(WebastoConnectSwitch)
     switch.entity_id = "switch.test"
@@ -49,6 +57,7 @@ async def test_switch_turn_off_updates_listeners_without_refresh() -> None:
     await switch.async_turn_off()
 
     command_fn.assert_awaited_once_with(switch._cloud, switch._cloud.devices[1], False)
+    coordinator.async_execute_cloud_call.assert_awaited_once()
     coordinator.async_update_listeners.assert_called_once()
     coordinator.async_refresh.assert_not_called()
 
@@ -60,6 +69,7 @@ async def test_number_set_value_updates_listeners_without_refresh() -> None:
     coordinator = SimpleNamespace(
         async_update_listeners=Mock(),
         async_refresh=AsyncMock(),
+        async_execute_cloud_call=AsyncMock(side_effect=_passthrough_cloud_call),
     )
     number = object.__new__(WebastoConnectNumber)
     number.entity_id = "number.test"
@@ -71,6 +81,6 @@ async def test_number_set_value_updates_listeners_without_refresh() -> None:
     await number.async_set_native_value(12.5)
 
     set_fn.assert_awaited_once_with(number._cloud.devices[1], 12.5)
+    coordinator.async_execute_cloud_call.assert_awaited_once()
     coordinator.async_update_listeners.assert_called_once()
     coordinator.async_refresh.assert_not_called()
-
