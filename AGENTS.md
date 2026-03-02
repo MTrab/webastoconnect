@@ -146,6 +146,10 @@ Each PR must include:
 
 The agent must NOT merge a PR without explicit permission
 
+The agent must NOT use administrative merge overrides (for example `gh pr merge --admin`).
+
+Before merging any PR, the agent MUST wait until all required CI/status checks are green/passing.
+
 When a branch is merged it must also be deleted both local and remote, and changes merged to master must be pulled
 
 ---
