@@ -1,0 +1,19 @@
+{
+  "card": {
+    "ui": {
+      "geo_fence": "Geo-fence",
+      "mode": "Modus",
+      "timers": "Timere",
+      "map": "Kort",
+      "active": "Aktiv",
+      "inactive": "Ikke aktiv",
+      "ending_now": "Slutter nu",
+      "left": "tilbage",
+      "main_output_missing": "Vælg Main output entity i kortindstillinger",
+      "output": "Output",
+      "toggle_output": "Skift output",
+      "close": "Luk",
+      "map_unavailable": "Lokation er ikke tilgængelig"
+    }
+  }
+}

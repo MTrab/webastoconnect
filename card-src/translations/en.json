@@ -1,0 +1,19 @@
+{
+  "card": {
+    "ui": {
+      "geo_fence": "Geo-fence",
+      "mode": "Mode",
+      "timers": "Timers",
+      "map": "Map",
+      "active": "Active",
+      "inactive": "Inactive",
+      "ending_now": "Ending now",
+      "left": "left",
+      "main_output_missing": "Select Main output entity in card settings",
+      "output": "Output",
+      "toggle_output": "Toggle output",
+      "close": "Close",
+      "map_unavailable": "Location is unavailable"
+    }
+  }
+}

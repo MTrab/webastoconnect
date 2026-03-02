@@ -44,5 +44,8 @@ if [[ -f "${LOCK_FILE}" ]]; then
     rm -f "${LOCK_FILE}"
 fi
 
+# Remove old webasto card, to ensure we are testing the latest version.
+rm -rf "${PWD}/config/www/webastoconnect" || true
+
 # Start Home Assistant
 hass --config "${PWD}/config" --debug
