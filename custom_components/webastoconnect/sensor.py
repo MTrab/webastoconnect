@@ -1,5 +1,6 @@
 """Sensors for Webasto Connect."""
 
+from datetime import UTC, datetime
 import logging
 
 from homeassistant.components import sensor
@@ -17,6 +18,36 @@ from .api import WebastoConnectUpdateCoordinator
 from .base import WebastoBaseEntity, WebastoConnectSensorEntityDescription
 
 LOGGER = logging.getLogger(__name__)
+MAIN_OUTPUT_LINES = {"OUTH", "OUTV"}
+
+
+def _main_output_end_time(webasto) -> datetime | None:
+    """Return the UTC end timestamp for the active main output."""
+    end_time = getattr(webasto, "output_main_end_time", None)
+    if isinstance(end_time, datetime):
+        return end_time if end_time.tzinfo is not None else end_time.replace(tzinfo=UTC)
+
+    last_data = getattr(webasto, "last_data", None)
+    if not isinstance(last_data, dict):
+        return None
+
+    outputs = last_data.get("outputs")
+    if not isinstance(outputs, list):
+        return None
+
+    for output in outputs:
+        if not isinstance(output, dict):
+            continue
+        if output.get("line") not in MAIN_OUTPUT_LINES:
+            continue
+        if output.get("state") != "ON":
+            continue
+
+        ontime = output.get("ontime")
+        if isinstance(ontime, int | float) and ontime > 0:
+            return datetime.fromtimestamp(ontime, UTC)
+
+    return None
 
 SENSORS = [
     WebastoConnectSensorEntityDescription(
@@ -50,6 +81,15 @@ SENSORS = [
         entity_registry_enabled_default=False,
         value_fn=lambda webasto: webasto.subscription_expiration.strftime("%d-%m-%Y"),
         icon="mdi:calendar-end",
+    ),
+    WebastoConnectSensorEntityDescription(
+        key="main_output_end_time",
+        name="Main Output Ends At",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=None,
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=_main_output_end_time,
+        icon="mdi:timer-end",
     ),
 ]
 
