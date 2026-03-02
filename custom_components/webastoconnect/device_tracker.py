@@ -5,15 +5,14 @@ import logging
 from homeassistant.components import device_tracker
 from homeassistant.components.device_tracker.config_entry import TrackerEntity
 from homeassistant.components.device_tracker.const import SourceType
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.util import slugify as util_slugify
 
+from . import WebastoConfigEntry
 from custom_components.webastoconnect.base import WebastoBaseEntity
 
 from .api import WebastoConnectUpdateCoordinator
-from .const import ATTR_COORDINATOR, DOMAIN
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,9 +24,9 @@ TRACKER = EntityDescription(
 )
 
 
-async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
+async def async_setup_entry(hass, entry: WebastoConfigEntry, async_add_devices):
     """Set up device tracker."""
-    coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
+    coordinator = entry.runtime_data.coordinator
     trackers = []
 
     for id, device in coordinator.cloud.devices.items():

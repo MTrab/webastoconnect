@@ -5,14 +5,13 @@ from typing import cast
 
 from homeassistant.components import binary_sensor
 from homeassistant.components.binary_sensor import BinarySensorEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
 from homeassistant.util import slugify as util_slugify
 
+from . import WebastoConfigEntry
 from .api import WebastoConnectUpdateCoordinator
 from .base import WebastoBaseEntity, WebastoConnectBinarySensorEntityDescription
-from .const import ATTR_COORDINATOR, DOMAIN
 
 LOGGER = logging.getLogger(__name__)
 
@@ -29,11 +28,11 @@ BINARY_SENSORS = [
 ]
 
 
-async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
+async def async_setup_entry(hass, entry: WebastoConfigEntry, async_add_devices):
     """Set up binary sensors."""
     binarysensors = []
 
-    coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
+    coordinator = entry.runtime_data.coordinator
 
     for id, device in coordinator.cloud.devices.items():
         LOGGER.debug("Setting up binary_sensors for device: %s", device.name)
