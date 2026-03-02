@@ -1,4 +1,31 @@
 class WebastoConnectCard extends HTMLElement {
+  static TRANSLATIONS = {
+    en: {
+      geo_fence: "Geo-fence",
+      mode: "Mode",
+      timers: "Timers",
+      map: "Map",
+      inactive: "Inactive",
+      ending_now: "Ending now",
+      minutes_left: "{minutes} minutes left",
+      heater: "Heater",
+      ventilation: "Ventilation",
+      toggle_output: "Toggle output",
+    },
+    da: {
+      geo_fence: "Geo-fence",
+      mode: "Modus",
+      timers: "Timere",
+      map: "Kort",
+      inactive: "Ikke aktiv",
+      ending_now: "Slutter nu",
+      minutes_left: "{minutes} minutter tilbage",
+      heater: "Heater",
+      ventilation: "Ventilation",
+      toggle_output: "Skift output",
+    },
+  };
+
   setConfig(config) {
     if (!config.main_output_entity) {
       throw new Error("Missing required config: main_output_entity");
@@ -6,10 +33,6 @@ class WebastoConnectCard extends HTMLElement {
     this._config = {
       ventilation_mode_entity: config.ventilation_mode_entity,
       end_time_entity: config.end_time_entity,
-      title_geo_fence: "Geo-fence",
-      title_mode: "Modus",
-      title_timers: "Timere",
-      title_map: "Kort",
       ...config,
     };
   }
@@ -30,25 +53,50 @@ class WebastoConnectCard extends HTMLElement {
     return entityId ? this._hass?.states?.[entityId] : undefined;
   }
 
+  _lang() {
+    const raw = String(this._hass?.language || "en").toLowerCase();
+    if (WebastoConnectCard.TRANSLATIONS[raw]) {
+      return raw;
+    }
+    const short = raw.split("-")[0];
+    return WebastoConnectCard.TRANSLATIONS[short] ? short : "en";
+  }
+
+  _t(key, vars = {}) {
+    const lang = this._lang();
+    let text =
+      WebastoConnectCard.TRANSLATIONS[lang][key] ||
+      WebastoConnectCard.TRANSLATIONS.en[key] ||
+      key;
+
+    Object.entries(vars).forEach(([name, value]) => {
+      text = text.replace(`{${name}}`, String(value));
+    });
+
+    return text;
+  }
+
   _computeLabel(endEntity) {
     if (!endEntity || !endEntity.state || endEntity.state === "unknown" || endEntity.state === "unavailable") {
-      return "Ikke aktiv";
+      return this._t("inactive");
     }
 
     const end = new Date(endEntity.state);
     if (Number.isNaN(end.getTime())) {
-      return "Ikke aktiv";
+      return this._t("inactive");
     }
 
     const leftMinutes = Math.round((end.getTime() - Date.now()) / 60000);
     if (leftMinutes <= 0) {
-      return "Slutter nu";
+      return this._t("ending_now");
     }
-    return `${leftMinutes} minutter tilbage`;
+    return this._t("minutes_left", { minutes: leftMinutes });
   }
 
   _computeOutputName(ventModeState) {
-    return ventModeState?.state === "on" ? "Ventilation" : "Heater";
+    return ventModeState?.state === "on"
+      ? this._t("ventilation")
+      : this._t("heater");
   }
 
   _toggleMainOutput() {
@@ -74,6 +122,11 @@ class WebastoConnectCard extends HTMLElement {
     const outputName = this._computeOutputName(vent);
     const label = this._computeLabel(end);
     const icon = this._config.center_icon || "mdi:car-defrost-rear";
+    const titleGeoFence = this._config.title_geo_fence || this._t("geo_fence");
+    const titleMode = this._config.title_mode || this._t("mode");
+    const titleTimers = this._config.title_timers || this._t("timers");
+    const titleMap = this._config.title_map || this._t("map");
+    const toggleLabel = this._t("toggle_output");
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -147,11 +200,11 @@ class WebastoConnectCard extends HTMLElement {
         }
       </style>
       <ha-card>
-        <div class="q tl">${this._config.title_geo_fence}</div>
-        <div class="q tr">${this._config.title_mode}</div>
-        <div class="q bl">${this._config.title_timers}</div>
-        <div class="q br">${this._config.title_map}</div>
-        <div class="center-wrap" id="center-toggle" role="button" tabindex="0" aria-label="Toggle output">
+        <div class="q tl">${titleGeoFence}</div>
+        <div class="q tr">${titleMode}</div>
+        <div class="q bl">${titleTimers}</div>
+        <div class="q br">${titleMap}</div>
+        <div class="center-wrap" id="center-toggle" role="button" tabindex="0" aria-label="${toggleLabel}">
           <ha-icon class="icon" icon="${icon}" style="--mdc-icon-size: 96px;"></ha-icon>
           <div class="name">${outputName}</div>
           <div class="label">${label}</div>

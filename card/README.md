@@ -18,3 +18,12 @@ Then add a Lovelace resource:
 - Type: `module`
 
 Use the example from `card/webasto_connect_card.yaml` and set your own entity IDs.
+
+## Language / translations
+- The card auto-selects text from Home Assistant language (`hass.language`).
+- Built-in translations currently include `da` and `en` (fallback: `en`).
+- You can still override corner titles with:
+  - `title_geo_fence`
+  - `title_mode`
+  - `title_timers`
+  - `title_map`
