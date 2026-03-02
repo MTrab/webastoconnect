@@ -1,5 +1,6 @@
 colorlog==6.10.1
 homeassistant==2026.2.3
+pywebasto==2.0.0
 pytest==9.0.2
 pytest-cov==7.0.0
 pip>=21.0,<25.4
