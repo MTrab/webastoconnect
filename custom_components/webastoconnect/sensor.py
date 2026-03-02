@@ -98,7 +98,7 @@ SENSORS = [
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=_main_output_end_time,
         name_fn=_main_output_end_name,
-        icon="mdi:timer-end",
+        icon="mdi:timer-outline",
     ),
 ]
 
