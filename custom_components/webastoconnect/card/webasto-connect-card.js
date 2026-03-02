@@ -48,10 +48,12 @@ class WebastoConnectCard extends HTMLElement {
     });
   }
 
-  _computeOutputName(ventModeState) {
-    return ventModeState?.state === "on"
-      ? localize(this._hass, "card.ui.ventilation")
-      : localize(this._hass, "card.ui.heater");
+  _computeOutputName(mainOutputState) {
+    const friendlyName = mainOutputState?.attributes?.friendly_name;
+    if (typeof friendlyName === "string" && friendlyName.trim() !== "") {
+      return friendlyName;
+    }
+    return localize(this._hass, "card.ui.output");
   }
 
   _toggleMainOutput() {
@@ -69,12 +71,11 @@ class WebastoConnectCard extends HTMLElement {
     }
 
     const main = this._getState(this._config.main_output_entity);
-    const vent = this._getState(this._config.ventilation_mode_entity);
     const end = this._getState(this._config.end_time_entity);
 
     const isOn = main?.state === "on";
     const ringColor = isOn ? "#d33131" : "#2ea44f";
-    const outputName = this._computeOutputName(vent);
+    const outputName = this._computeOutputName(main);
     const label = this._computeLabel(end);
     const icon = this._config.center_icon || "mdi:car-defrost-rear";
     const titleGeoFence =

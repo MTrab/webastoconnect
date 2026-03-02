@@ -8,8 +8,7 @@
       "inactive": "Ikke aktiv",
       "ending_now": "Slutter nu",
       "minutes_left": "{minutes} minutter tilbage",
-      "heater": "Heater",
-      "ventilation": "Ventilation",
+      "output": "Output",
       "toggle_output": "Skift output"
     }
   }
