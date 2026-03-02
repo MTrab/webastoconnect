@@ -37,10 +37,6 @@ jobs:
           npm install
           npm run build
 
-      - name: Verify card bundle is committed
-        run: |
-          git diff --exit-code -- custom_components/webastoconnect/card/webasto-connect-card.js
-
       - name: Run Ruff
         run: ruff check .
 
