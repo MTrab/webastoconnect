@@ -56,7 +56,7 @@ SWITCHES = [
 
 
 async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
-    """Setup switch."""
+    """Set up switches."""
     switches = []
 
     coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
@@ -133,7 +133,7 @@ class WebastoConnectSwitch(WebastoBaseEntity, SwitchEntity):
             self._cloud.devices[self._device_id],
             True,
         )
-        await self.coordinator.async_refresh()
+        self.coordinator.async_update_listeners()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the switch."""
@@ -143,4 +143,4 @@ class WebastoConnectSwitch(WebastoBaseEntity, SwitchEntity):
             self._cloud.devices[self._device_id],
             False,
         )
-        await self.coordinator.async_refresh()
+        self.coordinator.async_update_listeners()

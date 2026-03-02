@@ -46,7 +46,7 @@ NUMBERS = [
 
 
 async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
-    """Setup switch."""
+    """Set up numbers."""
     numbers_list = []
 
     coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
@@ -101,4 +101,4 @@ class WebastoConnectNumber(WebastoBaseEntity, NumberEntity):
             self._cloud.devices[self._device_id],
             value,
         )
-        await self.coordinator.async_refresh()
+        self.coordinator.async_update_listeners()
