@@ -56,3 +56,14 @@ If your device is NOT listed under devices:
 * Login with your existing email and password
 
 The device should now be linked to your email account and will show up after a restart of Home Assistant, or after reloading the integration
+
+# Development: Coverage in VS Code
+
+The devcontainer includes `ryanluker.vscode-coverage-gutters`.
+
+To generate coverage for it:
+
+* Run the VS Code task `Run tests with coverage.xml`, or run:
+  * `python3 -m pytest tests --cov=custom_components --cov-report=term-missing --cov-report=xml:coverage.xml`
+
+Coverage Gutters is configured to read `coverage.xml` from the workspace root.

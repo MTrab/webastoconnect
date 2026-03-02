@@ -56,7 +56,7 @@ SENSORS = [
 
 
 async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
-    """Setup sensors."""
+    """Set up sensors."""
     sensors = []
 
     coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
