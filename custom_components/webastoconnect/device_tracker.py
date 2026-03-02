@@ -26,7 +26,7 @@ TRACKER = EntityDescription(
 
 
 async def async_setup_entry(hass, entry: ConfigEntry, async_add_devices):
-    """Setup device tracker."""
+    """Set up device tracker."""
     coordinator = hass.data[DOMAIN][entry.entry_id][ATTR_COORDINATOR]
     trackers = []
 
@@ -57,10 +57,21 @@ class WebastoConnectDeviceTracker(WebastoBaseEntity, TrackerEntity):
             )
         )
 
-        self._prev_lat = self._cloud.devices[self._device_id].location["lat"]  # type: ignore
-        self._prev_lon = self._cloud.devices[self._device_id].location["lon"]  # type: ignore
+        location = self._location_data
+        self._prev_lat = location["lat"] if location else None
+        self._prev_lon = location["lon"] if location else None
 
         self._attributes = {}
+
+    @property
+    def _location_data(self) -> dict | None:
+        """Return validated location data when available."""
+        location = self._cloud.devices[self._device_id].location
+        if not isinstance(location, dict):
+            return None
+        if "lat" not in location or "lon" not in location:
+            return None
+        return location
 
     @property
     def extra_state_attributes(self):
@@ -70,22 +81,20 @@ class WebastoConnectDeviceTracker(WebastoBaseEntity, TrackerEntity):
     @property
     def available(self) -> bool:
         """Handle the location states."""
-        if isinstance(self._cloud.devices[self._device_id].location, type(None)):
-            self._attr_available = False
-            return False
-        else:
-            self._attr_available = True
-            return True
+        is_available = self._location_data is not None
+        self._attr_available = is_available
+        return is_available
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        if (
-            self._cloud.devices[self._device_id].location["lat"] != self._prev_lat  # type: ignore
-            or self._cloud.devices[self._device_id].location["lon"] != self._prev_lon  # type: ignore
-        ):
-            self._prev_lat = self._cloud.devices[self._device_id].location["lat"]  # type: ignore
-            self._prev_lon = self._cloud.devices[self._device_id].location["lon"]  # type: ignore
+        location = self._location_data
+        lat = location["lat"] if location else None
+        lon = location["lon"] if location else None
+
+        if lat != self._prev_lat or lon != self._prev_lon:
+            self._prev_lat = lat
+            self._prev_lon = lon
             self._attributes = {}
 
             self.async_write_ha_state()
@@ -93,7 +102,7 @@ class WebastoConnectDeviceTracker(WebastoBaseEntity, TrackerEntity):
     @property
     def source_type(self) -> SourceType | str | None:
         """Return the source type, eg gps or router, of the device."""
-        if isinstance(self._cloud.devices[self._device_id].location, type(None)):
+        if self._location_data is None:
             return None
 
         return SourceType.GPS
@@ -101,15 +110,17 @@ class WebastoConnectDeviceTracker(WebastoBaseEntity, TrackerEntity):
     @property
     def latitude(self) -> float | None:
         """Return latitude value of the device."""
-        if isinstance(self._cloud.devices[self._device_id].location, type(None)):
+        location = self._location_data
+        if location is None:
             return None
 
-        return float(self._cloud.devices[self._device_id].location["lat"])  # type: ignore
+        return float(location["lat"])
 
     @property
     def longitude(self) -> float | None:
         """Return longitude value of the device."""
-        if isinstance(self._cloud.devices[self._device_id].location, type(None)):
+        location = self._location_data
+        if location is None:
             return None
 
-        return float(self._cloud.devices[self._device_id].location["lon"])  # type: ignore
+        return float(location["lon"])
