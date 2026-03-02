@@ -6,11 +6,11 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryAuthFailed,ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import entity_registry as er
 from homeassistant.loader import async_get_integration
 from homeassistant.util import slugify as util_slugify
-from pywebasto.exceptions import UnauthorizedException,InvalidRequestException
+from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
 from .api import WebastoConnectUpdateCoordinator
 from .const import (
@@ -115,7 +115,11 @@ async def _async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ATTR_DEVICES: {},
     }
 
-    await coordinator.async_config_entry_first_refresh()
+    if coordinator.cloud.devices:
+        # connect() already hydrated device state, avoid an immediate duplicate update call.
+        coordinator.async_set_updated_data(None)
+    else:
+        await coordinator.async_config_entry_first_refresh()
 
     for id, device in coordinator.cloud.devices.items():
         LOGGER.debug("Found device: %s", device.name)
