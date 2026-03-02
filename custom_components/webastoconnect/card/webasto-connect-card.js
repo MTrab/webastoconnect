@@ -180,7 +180,7 @@ class WebastoConnectCard extends HTMLElement {
 
     const isMainAvailable = Boolean(main);
     const isOn = isMainAvailable && main.state === "on";
-    const ringColor = !isMainAvailable ? "#9aa4b5" : isOn ? "#d33131" : "#2ea44f";
+    const ringColor = isOn ? "#d33131" : "#c5cfdf";
     const outputName = this._computeOutputName(main);
     const label = isMainAvailable
       ? this._computeLabel(end)
