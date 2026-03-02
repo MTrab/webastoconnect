@@ -107,6 +107,10 @@ async def _async_setup(
         STARTUP,
         integration.version,
     )
+    LOGGER.debug(
+        "Checking Webasto Connect Card installation status for /local/webastoconnect/%s",
+        CARD_FILENAME,
+    )
     installed, card_version = await hass.async_add_executor_job(
         ensure_card_installed,
         Path(integration.file_path),
@@ -121,6 +125,12 @@ async def _async_setup(
     elif card_version is None:
         LOGGER.warning(
             "Webasto Connect Card assets not found in integration package; skipping install"
+        )
+    else:
+        LOGGER.debug(
+            "Webasto Connect Card already up to date (v%s) at /local/webastoconnect/%s",
+            card_version,
+            CARD_FILENAME,
         )
 
     coordinator = WebastoConnectUpdateCoordinator(hass, entry)
