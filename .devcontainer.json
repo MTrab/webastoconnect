@@ -21,7 +21,7 @@
 				"ms-python.vscode-pylance",
 				"ms-python.isort",
 				"ms-python.black-formatter",
-				"GitHub.copilot"
+				"openai.chatgpt"
 			],
 			"settings": {
 				"files.eol": "\n",
