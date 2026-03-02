@@ -1,0 +1,19 @@
+# 1) Add this resource in Home Assistant:
+# URL: /local/webasto-connect-card.js
+# Type: module
+#
+# 2) Place `card/webasto-connect-card.js` in your HA www folder:
+# config/www/webasto-connect-card.js
+#
+# 3) Use this card config:
+
+type: custom:webasto-connect-card
+main_output_entity: switch.webasto_main_output
+ventilation_mode_entity: switch.webasto_ventilation_mode
+end_time_entity: sensor.webasto_main_output_end_time
+
+# Optional labels:
+# title_geo_fence: Geo-fence
+# title_mode: Modus
+# title_timers: Timere
+# title_map: Kort
