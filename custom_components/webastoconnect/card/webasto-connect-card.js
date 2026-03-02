@@ -256,7 +256,7 @@ class WebastoConnectCard extends HTMLElement {
       this._config.center_icon ||
       main?.attributes?.icon ||
       "mdi:car-defrost-rear";
-    const titleGeoFence = localize(this._hass, "card.ui.geo_fence");
+    const titleGeoFence = "";
     const titleMode = localize(this._hass, "card.ui.mode");
     const titleTimers = localize(this._hass, "card.ui.timers");
     const titleMap = localize(this._hass, "card.ui.map");
