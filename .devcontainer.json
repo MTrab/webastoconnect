@@ -9,7 +9,7 @@
 		"8123": {
 			"label": "Home Assistant - Webasto Connect",
 			"onAutoForward": "notify",
-      		"protocol": "http"
+			"protocol": "http"
 		}
 	},
 	"customizations": {
@@ -44,6 +44,9 @@
 		"ghcr.io/devcontainers/features/rust:1": {}
 	},
 	"mounts": [
-		"source=${localWorkspaceFolder}/config,target=/config,type=bind,consistency=cached"
+		"source=${localWorkspaceFolder}/config,target=/config,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/.codex/auth.json,target=/etc/codex/auth.json,readonly,type=bind",
+		"source=${localWorkspaceFolder}/../pywebasto,target=/development/github/homeassistant/pywebasto,type=bind",
+		"source=gh-config,target=/home/vscode/.config/gh,type=volume"
 	]
 }
