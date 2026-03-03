@@ -27,6 +27,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
           add-paths: ./custom_components/webastoconnect/manifest.json
           commit-message: "release: update manifest for ${{ github.event.release.tag_name }}"
           branch: "chore/release-manifest-${{ github.event.release.tag_name }}"
