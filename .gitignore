@@ -16,3 +16,6 @@ local_notes/
 # Home Assistant configuration
 config/*
 !config/configuration.yaml
+
+# node modules
+node_modules/
