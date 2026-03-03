@@ -56,13 +56,14 @@ jobs:
         run: |
           set -euo pipefail
           pr_number="${{ steps.create_manifest_pr.outputs.pull-request-number }}"
+          repo="${{ github.repository }}"
           max_attempts=80
           sleep_seconds=15
 
           for attempt in $(seq 1 "$max_attempts"); do
-            if gh pr checks "$pr_number" --required; then
-              gh pr merge "$pr_number" --squash --delete-branch
-              merge_sha="$(gh pr view "$pr_number" --json mergeCommit -q '.mergeCommit.oid')"
+            if gh pr checks "$pr_number" --repo "$repo" --required; then
+              gh pr merge "$pr_number" --repo "$repo" --squash --delete-branch
+              merge_sha="$(gh pr view "$pr_number" --repo "$repo" --json mergeCommit -q '.mergeCommit.oid')"
               echo "merge_sha=$merge_sha" >> "$GITHUB_OUTPUT"
               exit 0
             fi
