@@ -5,6 +5,10 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+  pull-requests: write
+
 env:
   COMPONENT_DIR: webastoconnect
 
@@ -18,13 +22,64 @@ jobs:
       - name: Update manifest.json version to ${{ github.event.release.tag_name }}
         run: |
           python3 ${{ github.workspace }}/.github/scripts/update_hacs_manifest.py --version ${{ github.event.release.tag_name }} --path /custom_components/webastoconnect/
-      - name: Commit manifest update
+      - name: Create pull request for manifest update
+        id: create_manifest_pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          add-paths: ./custom_components/webastoconnect/manifest.json
+          commit-message: "release: update manifest for ${{ github.event.release.tag_name }}"
+          branch: "chore/release-manifest-${{ github.event.release.tag_name }}"
+          title: "release: update manifest for ${{ github.event.release.tag_name }}"
+          body: |
+            Automated manifest update for `${{ github.event.release.tag_name }}`.
+          labels: |
+            skip-changelog
+      - name: Verify gh is available
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add ./custom_components/webastoconnect/manifest.json
-          git commit -m "Updated manifest.json"
-          git push origin HEAD:main
+          gh --version
+      - name: Enable auto-merge for manifest PR
+        if: ${{ steps.create_manifest_pr.outputs.pull-request-number != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge "${{ steps.create_manifest_pr.outputs.pull-request-number }}" --auto --squash --delete-branch
+      - name: Wait for manifest PR merge
+        id: wait_manifest_pr_merge
+        if: ${{ steps.create_manifest_pr.outputs.pull-request-number != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          pr_number="${{ steps.create_manifest_pr.outputs.pull-request-number }}"
+          max_attempts=120
+          sleep_seconds=15
+
+          for attempt in $(seq 1 "$max_attempts"); do
+            merged_at="$(gh pr view "$pr_number" --json mergedAt -q '.mergedAt')"
+            state="$(gh pr view "$pr_number" --json state -q '.state')"
+
+            if [ "$merged_at" != "null" ] && [ -n "$merged_at" ]; then
+              merge_sha="$(gh pr view "$pr_number" --json mergeCommit -q '.mergeCommit.oid')"
+              echo "merge_sha=$merge_sha" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            if [ "$state" = "CLOSED" ]; then
+              echo "Manifest PR #$pr_number was closed without merge."
+              exit 1
+            fi
+
+            sleep "$sleep_seconds"
+          done
+
+          echo "Timed out waiting for manifest PR #$pr_number to merge."
+          exit 1
+      - name: Checkout merged commit
+        if: ${{ steps.wait_manifest_pr_merge.outputs.merge_sha != '' }}
+        run: |
+          git fetch origin main
+          git checkout --force "${{ steps.wait_manifest_pr_merge.outputs.merge_sha }}"
       - name: Create zip
         run: |
           cd custom_components/webastoconnect
