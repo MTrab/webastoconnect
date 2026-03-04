@@ -76,7 +76,30 @@ class WebastoConnectUpdateCoordinator(DataUpdateCoordinator[None]):
         except UnauthorizedException as err:
             self._consecutive_unauthorized += 1
             if self._consecutive_unauthorized >= MAX_CONSECUTIVE_UNAUTHORIZED:
-                raise ConfigEntryAuthFailed("Authentication with Webasto failed") from err
+                LOGGER.warning(
+                    "Received %s consecutive unauthorized responses, validating credentials before reauth",
+                    self._consecutive_unauthorized,
+                )
+                try:
+                    await self.async_execute_cloud_call(self.cloud.connect)
+                except UnauthorizedException as verify_err:
+                    raise ConfigEntryAuthFailed(
+                        "Authentication with Webasto failed"
+                    ) from verify_err
+                except InvalidRequestException as verify_err:
+                    self._consecutive_unauthorized = 0
+                    raise UpdateFailed(
+                        f"Unable to verify authentication state: {verify_err}"
+                    ) from verify_err
+                except Exception as verify_err:
+                    self._consecutive_unauthorized = 0
+                    raise UpdateFailed(
+                        f"Temporary failure while verifying authentication state: {verify_err}",
+                        retry_after=300,
+                    ) from verify_err
+
+                self._consecutive_unauthorized = 0
+                return None
 
             raise UpdateFailed(
                 "Received unauthorized from Webasto API, retrying shortly",
