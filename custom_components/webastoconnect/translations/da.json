@@ -6,6 +6,7 @@
             "reauth_successful": "Genautentificering gennemført"
         },
         "error": {
+            "cannot_connect": "Kan ikke oprette forbindelse",
             "invalid_auth": "Ugyldig autentificering"
         },
         "step": {
@@ -27,6 +28,7 @@
     },
     "options": {
         "error": {
+            "cannot_connect": "Kan ikke oprette forbindelse",
             "invalid_auth": "Ugyldig autentificering"
         },
         "step": {

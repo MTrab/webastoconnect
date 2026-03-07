@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from pywebasto.exceptions import UnauthorizedException
+from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
 import custom_components.webastoconnect as integration
 from custom_components.webastoconnect.config_flow import WebastoConnectOptionsFlow
@@ -121,4 +121,40 @@ async def test_options_flow_returns_error_on_invalid_auth(monkeypatch) -> None:
 
     flow.async_show_form.assert_called_once()
     assert flow.async_show_form.call_args.kwargs["errors"] == {"base": "invalid_auth"}
+    assert result == {"type": "form"}
+
+
+@pytest.mark.asyncio
+async def test_options_flow_returns_error_on_connection_validation_failure(
+    monkeypatch,
+) -> None:
+    """Connection validation errors should return cannot_connect."""
+
+    class FakeWebasto:
+        """Fake client that fails to validate connection."""
+
+        def __init__(self, *args, **kwargs) -> None:
+            """Initialize fake client."""
+
+        async def connect(self) -> None:
+            """Simulate API validation failure."""
+            raise InvalidRequestException("bad response")
+
+    monkeypatch.setattr(
+        "custom_components.webastoconnect.config_flow.WebastoConnect",
+        FakeWebasto,
+    )
+
+    flow = object.__new__(WebastoConnectOptionsFlow)
+    config_entry = SimpleNamespace(data={}, options={})
+    flow.hass = SimpleNamespace(
+        config_entries=SimpleNamespace(async_get_known_entry=Mock(return_value=config_entry))
+    )
+    flow.handler = "entry-1"
+    flow.async_show_form = Mock(return_value={"type": "form"})
+
+    result = await flow.async_step_init({"email": "user@test", "password": "bad"})
+
+    flow.async_show_form.assert_called_once()
+    assert flow.async_show_form.call_args.kwargs["errors"] == {"base": "cannot_connect"}
     assert result == {"type": "form"}
