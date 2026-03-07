@@ -34,15 +34,28 @@ create_timer:
           min: 1
           max: 1440
           mode: box
-    repeat:
-      name: Repeat bitmask
-      description: Weekday bitmask used by Webasto API.
-      required: true
+    repeat_days:
+      name: Repeat days
+      description: Days when timer should run. Leave empty for non-repeating timer.
+      required: false
       selector:
-        number:
-          min: 0
-          max: 127
-          mode: box
+        select:
+          multiple: true
+          options:
+            - label: Monday
+              value: monday
+            - label: Tuesday
+              value: tuesday
+            - label: Wednesday
+              value: wednesday
+            - label: Thursday
+              value: thursday
+            - label: Friday
+              value: friday
+            - label: Saturday
+              value: saturday
+            - label: Sunday
+              value: sunday
     enabled:
       name: Enabled
       description: Whether timer is enabled.
@@ -99,15 +112,28 @@ update_timer:
           min: 1
           max: 1440
           mode: box
-    repeat:
-      name: Repeat bitmask
-      description: Weekday bitmask used by Webasto API.
+    repeat_days:
+      name: Repeat days
+      description: Days when timer should run. Leave empty for non-repeating timer.
       required: false
       selector:
-        number:
-          min: 0
-          max: 127
-          mode: box
+        select:
+          multiple: true
+          options:
+            - label: Monday
+              value: monday
+            - label: Tuesday
+              value: tuesday
+            - label: Wednesday
+              value: wednesday
+            - label: Thursday
+              value: thursday
+            - label: Friday
+              value: friday
+            - label: Saturday
+              value: saturday
+            - label: Sunday
+              value: sunday
     enabled:
       name: Enabled
       description: Whether timer is enabled.

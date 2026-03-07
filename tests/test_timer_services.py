@@ -215,3 +215,37 @@ def test_coerce_timer_supports_start_time_and_duration_minutes() -> None:
     assert timer.start == 615
     assert timer.duration == 2700
     assert timer.repeat == 64
+
+
+def test_coerce_timer_builds_repeat_mask_from_repeat_days() -> None:
+    """repeat_days should be converted to the expected Webasto bitmask."""
+    hass = SimpleNamespace(config=SimpleNamespace(time_zone="UTC"))
+
+    timer = _coerce_timer(
+        {
+            "start_time": "10:15",
+            "duration_minutes": 45,
+            "repeat_days": ["monday", "friday"],
+            "enabled": True,
+        },
+        hass=hass,
+    )
+
+    assert timer.repeat == 72
+
+
+def test_coerce_timer_allows_empty_repeat_days_for_one_time_timer() -> None:
+    """Empty repeat_days should produce repeat mask 0."""
+    hass = SimpleNamespace(config=SimpleNamespace(time_zone="UTC"))
+
+    timer = _coerce_timer(
+        {
+            "start_time": "06:00",
+            "duration_minutes": 30,
+            "repeat_days": [],
+            "enabled": True,
+        },
+        hass=hass,
+    )
+
+    assert timer.repeat == 0

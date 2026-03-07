@@ -60,6 +60,7 @@ ATTR_DURATION = "duration"
 ATTR_START_TIME = "start_time"
 ATTR_DURATION_MINUTES = "duration_minutes"
 ATTR_REPEAT = "repeat"
+ATTR_REPEAT_DAYS = "repeat_days"
 ATTR_ENABLED = "enabled"
 ATTR_LATITUDE = "latitude"
 ATTR_LONGITUDE = "longitude"
@@ -74,6 +75,15 @@ VALID_TIMER_LINES = (
     LINE_HEATER_LEGACY,
     LINE_VENTILATION_LEGACY,
 )
+WEEKDAY_TO_MASK = {
+    "monday": 64,
+    "tuesday": 1,
+    "wednesday": 2,
+    "thursday": 4,
+    "friday": 8,
+    "saturday": 16,
+    "sunday": 32,
+}
 
 _BASE_SCHEMA = vol.Schema({vol.Required(ATTR_DEVICE_ID): cv.string})
 _CREATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
@@ -83,7 +93,8 @@ _CREATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
         vol.Required(ATTR_DURATION_MINUTES): vol.All(
             vol.Coerce(int), vol.Range(min=1)
         ),
-        vol.Required(ATTR_REPEAT): vol.All(vol.Coerce(int), vol.Range(min=0)),
+        vol.Optional(ATTR_REPEAT_DAYS, default=[]): [vol.In(tuple(WEEKDAY_TO_MASK))],
+        vol.Optional(ATTR_REPEAT): vol.All(vol.Coerce(int), vol.Range(min=0)),
         vol.Optional(ATTR_ENABLED, default=True): cv.boolean,
         vol.Optional(ATTR_LATITUDE): cv.string,
         vol.Optional(ATTR_LONGITUDE): cv.string,
@@ -97,6 +108,7 @@ _UPDATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
         vol.Optional(ATTR_DURATION_MINUTES): vol.All(
             vol.Coerce(int), vol.Range(min=1)
         ),
+        vol.Optional(ATTR_REPEAT_DAYS): [vol.In(tuple(WEEKDAY_TO_MASK))],
         vol.Optional(ATTR_REPEAT): vol.All(vol.Coerce(int), vol.Range(min=0)),
         vol.Optional(ATTR_ENABLED): cv.boolean,
         vol.Optional(ATTR_LATITUDE): vol.Any(cv.string, None),
@@ -215,6 +227,20 @@ def _coerce_timer(
         utc_dt = local_dt.astimezone(UTC)
         return utc_dt.hour * 60 + utc_dt.minute
 
+    def _repeat_mask_from_days(days: Any) -> int:
+        """Build repeat bitmask from weekday names."""
+        if not isinstance(days, list):
+            raise HomeAssistantError("repeat_days must be a list")
+        mask = 0
+        for day in days:
+            if not isinstance(day, str):
+                raise HomeAssistantError("repeat_days must contain weekday strings")
+            key = day.strip().lower()
+            if key not in WEEKDAY_TO_MASK:
+                raise HomeAssistantError(f"Unsupported weekday '{day}'")
+            mask |= WEEKDAY_TO_MASK[key]
+        return mask
+
     start = data.get(ATTR_START, getattr(existing, "start", None))
     if ATTR_START_TIME in data:
         start = _start_minutes_from_local_time(data.get(ATTR_START_TIME))
@@ -224,6 +250,8 @@ def _coerce_timer(
         duration = int(data[ATTR_DURATION_MINUTES]) * 60
 
     repeat = data.get(ATTR_REPEAT, getattr(existing, "repeat", None))
+    if ATTR_REPEAT_DAYS in data:
+        repeat = _repeat_mask_from_days(data[ATTR_REPEAT_DAYS])
     enabled = data.get(ATTR_ENABLED, getattr(existing, "enabled", True))
 
     latitude = (
