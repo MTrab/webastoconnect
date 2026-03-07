@@ -14,6 +14,12 @@ from homeassistant.loader import async_get_integration
 from homeassistant.util import slugify as util_slugify
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
+try:
+    from pywebasto.exceptions import ForbiddenException, InvalidResponseException
+except ImportError:
+    ForbiddenException = InvalidRequestException
+    InvalidResponseException = InvalidRequestException
+
 from .api import WebastoConnectUpdateCoordinator
 from .const import DOMAIN, PLATFORMS, STARTUP
 
@@ -115,7 +121,7 @@ async def _async_setup(
         )
     except UnauthorizedException:
         raise ConfigEntryAuthFailed("Invalid email or password specified") from None
-    except InvalidRequestException:
+    except (InvalidRequestException, ForbiddenException, InvalidResponseException):
         raise ConfigEntryNotReady("Error connecting to the API - try again later")
 
     if coordinator.cloud.devices:
