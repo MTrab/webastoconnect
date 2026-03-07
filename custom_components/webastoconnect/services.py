@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, time
 import logging
 from typing import Any
 
@@ -11,6 +12,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
+from homeassistant.util import dt as dt_util
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
 try:
@@ -55,6 +57,8 @@ ATTR_DEVICE_ID = "device_id"
 ATTR_TIMER_INDEX = "timer_index"
 ATTR_START = "start"
 ATTR_DURATION = "duration"
+ATTR_START_TIME = "start_time"
+ATTR_DURATION_MINUTES = "duration_minutes"
 ATTR_REPEAT = "repeat"
 ATTR_ENABLED = "enabled"
 ATTR_LATITUDE = "latitude"
@@ -75,8 +79,10 @@ _BASE_SCHEMA = vol.Schema({vol.Required(ATTR_DEVICE_ID): cv.string})
 _CREATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
     {
         vol.Optional(ATTR_LINE, default=LINE_HEATER): vol.In(VALID_TIMER_LINES),
-        vol.Required(ATTR_START): vol.All(vol.Coerce(int), vol.Range(min=1)),
-        vol.Required(ATTR_DURATION): vol.All(vol.Coerce(int), vol.Range(min=1)),
+        vol.Required(ATTR_START_TIME): cv.string,
+        vol.Required(ATTR_DURATION_MINUTES): vol.All(
+            vol.Coerce(int), vol.Range(min=1)
+        ),
         vol.Required(ATTR_REPEAT): vol.All(vol.Coerce(int), vol.Range(min=0)),
         vol.Optional(ATTR_ENABLED, default=True): cv.boolean,
         vol.Optional(ATTR_LATITUDE): cv.string,
@@ -87,8 +93,10 @@ _UPDATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
     {
         vol.Optional(ATTR_LINE, default=LINE_HEATER): vol.In(VALID_TIMER_LINES),
         vol.Required(ATTR_TIMER_INDEX): vol.All(vol.Coerce(int), vol.Range(min=0)),
-        vol.Optional(ATTR_START): vol.All(vol.Coerce(int), vol.Range(min=1)),
-        vol.Optional(ATTR_DURATION): vol.All(vol.Coerce(int), vol.Range(min=1)),
+        vol.Optional(ATTR_START_TIME): cv.string,
+        vol.Optional(ATTR_DURATION_MINUTES): vol.All(
+            vol.Coerce(int), vol.Range(min=1)
+        ),
         vol.Optional(ATTR_REPEAT): vol.All(vol.Coerce(int), vol.Range(min=0)),
         vol.Optional(ATTR_ENABLED): cv.boolean,
         vol.Optional(ATTR_LATITUDE): vol.Any(cv.string, None),
@@ -160,6 +168,7 @@ def _coerce_timer(
     data: dict[str, Any],
     *,
     existing: Any | None = None,
+    hass: HomeAssistant | None = None,
 ) -> SimpleTimer:
     """Build a SimpleTimer from service data, optionally patching an existing timer."""
     def _normalize_geo(value: Any) -> str | None:
@@ -173,8 +182,47 @@ def _coerce_timer(
             return normalized
         return str(value)
 
+    def _parse_clock_time(value: Any) -> time:
+        """Parse selector value to clock time."""
+        if isinstance(value, time):
+            return value
+        if not isinstance(value, str):
+            raise HomeAssistantError("start_time must be provided as HH:MM")
+
+        candidate = value.strip()
+        for fmt in ("%H:%M", "%H:%M:%S"):
+            try:
+                return datetime.strptime(candidate, fmt).time()
+            except ValueError:
+                continue
+        raise HomeAssistantError("start_time must be provided as HH:MM")
+
+    def _start_minutes_from_local_time(value: Any) -> int:
+        """Convert local clock time to UTC minutes after midnight."""
+        if hass is None:
+            raise HomeAssistantError("hass context is required for start_time conversion")
+        tz = dt_util.get_time_zone(hass.config.time_zone) or UTC
+        clock = _parse_clock_time(value)
+        now_local = datetime.now(tz)
+        local_dt = datetime(
+            now_local.year,
+            now_local.month,
+            now_local.day,
+            clock.hour,
+            clock.minute,
+            tzinfo=tz,
+        )
+        utc_dt = local_dt.astimezone(UTC)
+        return utc_dt.hour * 60 + utc_dt.minute
+
     start = data.get(ATTR_START, getattr(existing, "start", None))
+    if ATTR_START_TIME in data:
+        start = _start_minutes_from_local_time(data.get(ATTR_START_TIME))
+
     duration = data.get(ATTR_DURATION, getattr(existing, "duration", None))
+    if ATTR_DURATION_MINUTES in data:
+        duration = int(data[ATTR_DURATION_MINUTES]) * 60
+
     repeat = data.get(ATTR_REPEAT, getattr(existing, "repeat", None))
     enabled = data.get(ATTR_ENABLED, getattr(existing, "enabled", True))
 
@@ -230,6 +278,7 @@ async def async_update_timer(
     timer_index: int,
     timer_data: dict[str, Any],
     line: str,
+    hass: HomeAssistant | None = None,
 ) -> None:
     """Update timer at index and persist full timer list."""
 
@@ -240,7 +289,11 @@ async def async_update_timer(
             raise HomeAssistantError(
                 f"timer_index '{timer_index}' out of range (timers: {len(timers)})"
             )
-        timers[timer_index] = _coerce_timer(timer_data, existing=timers[timer_index])
+        timers[timer_index] = _coerce_timer(
+            timer_data,
+            existing=timers[timer_index],
+            hass=hass,
+        )
         await coordinator.cloud.save_timers(device=device, timers=timers, line=output)
 
     await coordinator.async_execute_cloud_call(_operation)
@@ -273,7 +326,7 @@ async def _async_handle_create_timer(hass: HomeAssistant, call: ServiceCall) -> 
     """Handle create_timer service."""
     coordinator, device = _coordinator_and_device(hass, call.data[ATTR_DEVICE_ID])
     _ensure_timer_api_support(coordinator)
-    timer = _coerce_timer(dict(call.data))
+    timer = _coerce_timer(dict(call.data), hass=hass)
     line = str(call.data.get(ATTR_LINE, LINE_HEATER))
 
     try:
@@ -290,7 +343,14 @@ async def _async_handle_update_timer(hass: HomeAssistant, call: ServiceCall) -> 
     line = str(call.data.get(ATTR_LINE, LINE_HEATER))
 
     try:
-        await async_update_timer(coordinator, device, timer_index, dict(call.data), line)
+        await async_update_timer(
+            coordinator,
+            device,
+            timer_index,
+            dict(call.data),
+            line,
+            hass=hass,
+        )
     except (InvalidRequestException, UnauthorizedException) as err:
         raise HomeAssistantError(f"Failed to update timer: {err}") from err
 

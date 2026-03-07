@@ -19,23 +19,20 @@ create_timer:
           options:
             - heater
             - ventilation
-    start:
-      name: Start
-      description: Timer start in minutes after midnight (UTC).
+    start_time:
+      name: Start time
+      description: Local clock time for timer start.
       required: true
       selector:
-        number:
-          min: 1
-          max: 1439
-          mode: box
-    duration:
+        time:
+    duration_minutes:
       name: Duration
-      description: Duration in seconds.
+      description: Duration in minutes.
       required: true
       selector:
         number:
           min: 1
-          max: 86400
+          max: 1440
           mode: box
     repeat:
       name: Repeat bitmask
@@ -97,23 +94,20 @@ update_timer:
         number:
           min: 0
           mode: box
-    start:
-      name: Start
-      description: Timer start in minutes after midnight (UTC).
+    start_time:
+      name: Start time
+      description: Local clock time for timer start.
       required: false
       selector:
-        number:
-          min: 1
-          max: 1439
-          mode: box
-    duration:
+        time:
+    duration_minutes:
       name: Duration
-      description: Duration in seconds.
+      description: Duration in minutes.
       required: false
       selector:
         number:
           min: 1
-          max: 86400
+          max: 1440
           mode: box
     repeat:
       name: Repeat bitmask

@@ -9,6 +9,7 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.webastoconnect.services import (
     LINE_VENTILATION,
     SimpleTimer,
+    _coerce_timer,
     async_create_timer,
     async_delete_timer,
     async_update_timer,
@@ -168,3 +169,22 @@ async def test_async_update_timer_clears_location_from_null_values() -> None:
     saved = coordinator.cloud.save_timers.await_args.kwargs["timers"]
     assert saved[0].latitude is None
     assert saved[0].longitude is None
+
+
+def test_coerce_timer_supports_start_time_and_duration_minutes() -> None:
+    """Clock-based start and minute duration should map to API units."""
+    hass = SimpleNamespace(config=SimpleNamespace(time_zone="UTC"))
+
+    timer = _coerce_timer(
+        {
+            "start_time": "10:15",
+            "duration_minutes": 45,
+            "repeat": 64,
+            "enabled": True,
+        },
+        hass=hass,
+    )
+
+    assert timer.start == 615
+    assert timer.duration == 2700
+    assert timer.repeat == 64
