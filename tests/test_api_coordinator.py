@@ -32,52 +32,53 @@ async def test_update_data_calls_cloud_update() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_data_validates_auth_immediately_on_unauthorized() -> None:
-    """Unauthorized should immediately trigger credential validation."""
+async def test_update_data_raises_auth_failed_on_unauthorized() -> None:
+    """Unauthorized from update should immediately trigger reauth."""
     update_mock = AsyncMock(side_effect=UnauthorizedException("unauthorized"))
     coordinator = _build_coordinator(update_mock)
-    coordinator.cloud.connect = AsyncMock()
-
-    await coordinator._async_update_data()
-
-    coordinator.cloud.connect.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_update_data_raises_auth_failed_when_validation_is_unauthorized() -> None:
-    """Unauthorized during validation should trigger reauth."""
-    update_mock = AsyncMock(side_effect=UnauthorizedException("invalid auth"))
-    coordinator = _build_coordinator(update_mock)
-    coordinator.cloud.connect = AsyncMock(
-        side_effect=UnauthorizedException("invalid auth")
-    )
 
     with pytest.raises(ConfigEntryAuthFailed):
         await coordinator._async_update_data()
 
+    coordinator.cloud.connect.assert_not_awaited()
+
 
 @pytest.mark.asyncio
-async def test_update_data_unauthorized_validation_invalid_request_is_transient() -> None:
-    """Invalid request during auth validation should stay transient."""
+async def test_update_data_unauthorized_does_not_attempt_connect_validation() -> None:
+    """Unauthorized flow should not call connect validation anymore."""
+    update_mock = AsyncMock(side_effect=UnauthorizedException("invalid auth"))
+    coordinator = _build_coordinator(update_mock)
+    coordinator.cloud.connect = AsyncMock(side_effect=RuntimeError("should not run"))
+
+    with pytest.raises(ConfigEntryAuthFailed):
+        await coordinator._async_update_data()
+
+    coordinator.cloud.connect.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_data_unauthorized_ignores_connect_validation_errors() -> None:
+    """Connect-side errors are irrelevant because connect is not used in flow."""
     update_mock = AsyncMock(side_effect=UnauthorizedException("unauthorized"))
     coordinator = _build_coordinator(update_mock)
     coordinator.cloud.connect = AsyncMock(side_effect=InvalidRequestException("bad state"))
 
-    with pytest.raises(UpdateFailed):
+    with pytest.raises(ConfigEntryAuthFailed):
         await coordinator._async_update_data()
+
+    coordinator.cloud.connect.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_update_data_unauthorized_validation_network_failure_is_transient() -> None:
-    """Unexpected errors during auth validation should not trigger reauth."""
+async def test_update_data_unauthorized_ignores_connect_network_failure() -> None:
+    """Connect failures should not affect unauthorized handling."""
     update_mock = AsyncMock(side_effect=UnauthorizedException("unauthorized"))
     coordinator = _build_coordinator(update_mock)
     coordinator.cloud.connect = AsyncMock(side_effect=RuntimeError("network down"))
 
-    with pytest.raises(UpdateFailed) as exc_info:
+    with pytest.raises(ConfigEntryAuthFailed):
         await coordinator._async_update_data()
-
-    assert exc_info.value.retry_after == 300
+    coordinator.cloud.connect.assert_not_awaited()
 
 
 @pytest.mark.asyncio
