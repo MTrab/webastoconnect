@@ -1,7 +1,8 @@
 """Sensors for Webasto Connect."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import logging
+from typing import Any
 
 from homeassistant.components import sensor
 from homeassistant.components.sensor import (
@@ -19,6 +20,8 @@ from .base import WebastoBaseEntity, WebastoConnectSensorEntityDescription
 
 LOGGER = logging.getLogger(__name__)
 MAIN_OUTPUT_LINES = {"OUTH", "OUTV"}
+HEATER_LINE = "OUTH"
+WEEKDAY_BITMASK = [64, 1, 2, 4, 8, 16, 32]  # Monday..Sunday (confirmed in pywebasto)
 
 
 def _main_output_end_time(webasto) -> datetime | None:
@@ -56,6 +59,139 @@ def _main_output_end_name(webasto) -> str:
     if isinstance(output_name, str) and output_name.strip():
         return f"{output_name} ends"
     return "Output ends"
+
+
+def _extract_simple_heater_timers(webasto: Any) -> list[dict[str, Any]]:
+    """Extract `simple` heater timers from latest API payload."""
+    last_data = getattr(webasto, "last_data", None)
+    if not isinstance(last_data, dict):
+        return []
+
+    timers: list[dict[str, Any]] = []
+    for section in ("outputs", "disabled_outputs"):
+        outputs = last_data.get(section)
+        if not isinstance(outputs, list):
+            continue
+        for output in outputs:
+            if not isinstance(output, dict) or output.get("line") != HEATER_LINE:
+                continue
+            output_timers = output.get("timers")
+            if not isinstance(output_timers, list):
+                continue
+            for timer in output_timers:
+                if isinstance(timer, dict) and timer.get("type") == "simple":
+                    timers.append(timer)
+    return timers
+
+
+def _next_timer_occurrence_utc(
+    *,
+    start: int,
+    repeat: int,
+    now_utc: datetime,
+) -> datetime | None:
+    """Calculate next UTC occurrence for a timer."""
+    if start <= 0 or start >= 24 * 60:
+        return None
+
+    hour = start // 60
+    minute = start % 60
+
+    if repeat == 0:
+        candidate = now_utc.replace(
+            hour=hour,
+            minute=minute,
+            second=0,
+            microsecond=0,
+        )
+        if candidate <= now_utc:
+            candidate += timedelta(days=1)
+        return candidate
+
+    for day_offset in range(0, 8):
+        candidate_date = now_utc.date() + timedelta(days=day_offset)
+        weekday = candidate_date.weekday()
+        if repeat & WEEKDAY_BITMASK[weekday] == 0:
+            continue
+
+        candidate = datetime(
+            candidate_date.year,
+            candidate_date.month,
+            candidate_date.day,
+            hour,
+            minute,
+            tzinfo=UTC,
+        )
+        if candidate > now_utc:
+            return candidate
+
+    return None
+
+
+def _timer_start_hhmm(start: int) -> str:
+    """Format timer start (minutes after midnight) as HH:MM."""
+    hour = start // 60
+    minute = start % 60
+    return f"{hour:02d}:{minute:02d}"
+
+
+def _next_timer_sensor_payload(
+    webasto: Any,
+    *,
+    now_utc: datetime | None = None,
+) -> tuple[datetime | None, dict[str, Any]]:
+    """Build state + attributes for next-enabled-timer sensor."""
+    now = now_utc or datetime.now(UTC)
+    timers = _extract_simple_heater_timers(webasto)
+
+    timer_items: list[dict[str, Any]] = []
+    next_index: int | None = None
+    next_occurrence: datetime | None = None
+    next_timer: dict[str, Any] | None = None
+
+    for index, timer in enumerate(timers):
+        start = int(timer.get("start", 0))
+        repeat = int(timer.get("repeat", 0))
+        enabled = bool(timer.get("enabled", False))
+        duration = int(timer.get("duration", 0))
+        location = timer.get("location")
+        latitude = location.get("lat") if isinstance(location, dict) else None
+        longitude = location.get("lon") if isinstance(location, dict) else None
+
+        occurrence = None
+        if enabled and start > 0:
+            occurrence = _next_timer_occurrence_utc(
+                start=start,
+                repeat=repeat,
+                now_utc=now,
+            )
+
+        item = {
+            "index": index,
+            "start": start,
+            "start_hhmm_utc": _timer_start_hhmm(start) if start > 0 else None,
+            "duration": duration,
+            "repeat": repeat,
+            "enabled": enabled,
+            "latitude": latitude,
+            "longitude": longitude,
+            "next_run_utc": occurrence.isoformat() if occurrence else None,
+        }
+        timer_items.append(item)
+
+        if not enabled or occurrence is None:
+            continue
+        if next_occurrence is None or occurrence < next_occurrence:
+            next_occurrence = occurrence
+            next_index = index
+            next_timer = item
+
+    return next_occurrence, {
+        "next_timer_index": next_index,
+        "next_timer": next_timer,
+        "timers": timer_items,
+    }
+
 
 SENSORS = [
     WebastoConnectSensorEntityDescription(
@@ -101,6 +237,16 @@ SENSORS = [
         name_fn=_main_output_end_name,
         icon="mdi:timer-outline",
     ),
+    WebastoConnectSensorEntityDescription(
+        key="next_enabled_timer",
+        name="Next Timer",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=None,
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_registry_enabled_default=False,
+        value_fn=lambda webasto: _next_timer_sensor_payload(webasto)[0],
+        icon="mdi:calendar-clock",
+    ),
 ]
 
 
@@ -138,6 +284,11 @@ class WebastoConnectSensor(WebastoBaseEntity, SensorEntity):
         self._attr_native_value = self.entity_description.value_fn(  # type: ignore
             self._cloud.devices[self._device_id]
         )
+        if self.entity_description.key == "next_enabled_timer":
+            _, attributes = _next_timer_sensor_payload(
+                self._cloud.devices[self._device_id]
+            )
+            self._attr_extra_state_attributes = attributes
 
         if not isinstance(description.unit_fn, type(None)):
             self._attr_native_unit_of_measurement = description.unit_fn(
@@ -160,4 +311,9 @@ class WebastoConnectSensor(WebastoBaseEntity, SensorEntity):
         self._attr_native_value = self.entity_description.value_fn(  # type: ignore
             self._cloud.devices[self._device_id]
         )
+        if self.entity_description.key == "next_enabled_timer":
+            _, attributes = _next_timer_sensor_payload(
+                self._cloud.devices[self._device_id]
+            )
+            self._attr_extra_state_attributes = attributes
         self.async_write_ha_state()

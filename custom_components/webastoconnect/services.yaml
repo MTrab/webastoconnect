@@ -1,0 +1,139 @@
+create_timer:
+  name: Create timer
+  description: Create a new simple heater timer for a Webasto device.
+  fields:
+    device_id:
+      name: Device ID
+      description: Webasto API device id.
+      required: true
+      selector:
+        text:
+    start:
+      name: Start
+      description: Timer start in minutes after midnight (UTC).
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 1439
+          mode: box
+    duration:
+      name: Duration
+      description: Duration in seconds.
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 86400
+          mode: box
+    repeat:
+      name: Repeat bitmask
+      description: Weekday bitmask used by Webasto API.
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 127
+          mode: box
+    enabled:
+      name: Enabled
+      description: Whether timer is enabled.
+      required: false
+      default: true
+      selector:
+        boolean:
+    latitude:
+      name: Latitude
+      description: Optional latitude. If set, longitude must also be set.
+      required: false
+      selector:
+        text:
+    longitude:
+      name: Longitude
+      description: Optional longitude. If set, latitude must also be set.
+      required: false
+      selector:
+        text:
+
+update_timer:
+  name: Update timer
+  description: Update an existing simple heater timer by index.
+  fields:
+    device_id:
+      name: Device ID
+      description: Webasto API device id.
+      required: true
+      selector:
+        text:
+    timer_index:
+      name: Timer index
+      description: Zero-based timer index in current timer list.
+      required: true
+      selector:
+        number:
+          min: 0
+          mode: box
+    start:
+      name: Start
+      description: Timer start in minutes after midnight (UTC).
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 1439
+          mode: box
+    duration:
+      name: Duration
+      description: Duration in seconds.
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 86400
+          mode: box
+    repeat:
+      name: Repeat bitmask
+      description: Weekday bitmask used by Webasto API.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 127
+          mode: box
+    enabled:
+      name: Enabled
+      description: Whether timer is enabled.
+      required: false
+      selector:
+        boolean:
+    latitude:
+      name: Latitude
+      description: Optional latitude. If set, longitude must also be set.
+      required: false
+      selector:
+        text:
+    longitude:
+      name: Longitude
+      description: Optional longitude. If set, latitude must also be set.
+      required: false
+      selector:
+        text:
+
+delete_timer:
+  name: Delete timer
+  description: Delete a simple heater timer by index.
+  fields:
+    device_id:
+      name: Device ID
+      description: Webasto API device id.
+      required: true
+      selector:
+        text:
+    timer_index:
+      name: Timer index
+      description: Zero-based timer index in current timer list.
+      required: true
+      selector:
+        number:
+          min: 0
+          mode: box

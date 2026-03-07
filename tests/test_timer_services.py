@@ -1,0 +1,123 @@
+"""Tests for Webasto timer service helpers."""
+
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
+
+import pytest
+from homeassistant.exceptions import HomeAssistantError
+
+from custom_components.webastoconnect.services import (
+    SimpleTimer,
+    async_create_timer,
+    async_delete_timer,
+    async_update_timer,
+)
+
+
+class _CoordinatorStub:
+    """Coordinator stub with lock-wrapped execution behavior."""
+
+    def __init__(self, timers: list[SimpleTimer]) -> None:
+        self.cloud = SimpleNamespace(
+            get_timers=AsyncMock(return_value=list(timers)),
+            save_timers=AsyncMock(),
+        )
+        self.async_update_listeners = Mock()
+        self.execute_calls = 0
+
+    async def async_execute_cloud_call(self, cloud_call, *args, **kwargs):
+        self.execute_calls += 1
+        return await cloud_call(*args, **kwargs)
+
+
+@pytest.mark.asyncio
+async def test_async_create_timer_appends_and_saves_full_list() -> None:
+    """Create should append timer and save full timer list."""
+    existing = SimpleTimer(start=600, duration=1800, repeat=64, enabled=True)
+    new_timer = SimpleTimer(start=700, duration=1200, repeat=1, enabled=True)
+    coordinator = _CoordinatorStub([existing])
+    device = SimpleNamespace(device_id="dev1")
+
+    await async_create_timer(coordinator, device, new_timer)
+
+    coordinator.cloud.get_timers.assert_awaited_once_with(device=device)
+    coordinator.cloud.save_timers.assert_awaited_once()
+    saved = coordinator.cloud.save_timers.await_args.kwargs["timers"]
+    assert len(saved) == 2
+    assert saved[1].start == 700
+    assert coordinator.execute_calls == 1
+    coordinator.async_update_listeners.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_update_timer_replaces_selected_index() -> None:
+    """Update should patch one timer and preserve the rest."""
+    coordinator = _CoordinatorStub(
+        [
+            SimpleTimer(start=600, duration=1800, repeat=64, enabled=True),
+            SimpleTimer(start=900, duration=1200, repeat=1, enabled=False),
+        ]
+    )
+    device = SimpleNamespace(device_id="dev1")
+
+    await async_update_timer(
+        coordinator,
+        device,
+        timer_index=1,
+        timer_data={"enabled": True, "duration": 3600},
+    )
+
+    saved = coordinator.cloud.save_timers.await_args.kwargs["timers"]
+    assert saved[0].start == 600
+    assert saved[1].start == 900
+    assert saved[1].duration == 3600
+    assert saved[1].enabled is True
+    assert coordinator.execute_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_async_delete_timer_removes_selected_index() -> None:
+    """Delete should remove one timer and save the remaining list."""
+    coordinator = _CoordinatorStub(
+        [
+            SimpleTimer(start=600, duration=1800, repeat=64, enabled=True),
+            SimpleTimer(start=900, duration=1200, repeat=1, enabled=False),
+        ]
+    )
+    device = SimpleNamespace(device_id="dev1")
+
+    await async_delete_timer(coordinator, device, timer_index=0)
+
+    saved = coordinator.cloud.save_timers.await_args.kwargs["timers"]
+    assert len(saved) == 1
+    assert saved[0].start == 900
+    assert coordinator.execute_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_async_update_timer_raises_for_invalid_index() -> None:
+    """Update should fail explicitly when timer index is out of range."""
+    coordinator = _CoordinatorStub([SimpleTimer(start=600, duration=1800, repeat=64)])
+    device = SimpleNamespace(device_id="dev1")
+
+    with pytest.raises(HomeAssistantError):
+        await async_update_timer(
+            coordinator,
+            device,
+            timer_index=4,
+            timer_data={"enabled": False},
+        )
+
+    coordinator.cloud.save_timers.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_async_delete_timer_raises_for_invalid_index() -> None:
+    """Delete should fail explicitly when timer index is out of range."""
+    coordinator = _CoordinatorStub([SimpleTimer(start=600, duration=1800, repeat=64)])
+    device = SimpleNamespace(device_id="dev1")
+
+    with pytest.raises(HomeAssistantError):
+        await async_delete_timer(coordinator, device, timer_index=7)
+
+    coordinator.cloud.save_timers.assert_not_awaited()
