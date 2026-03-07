@@ -76,19 +76,9 @@ update_timer:
       selector:
         device:
           integration: webastoconnect
-    line:
-      name: Output line
-      description: Timer line to modify.
-      required: false
-      default: heater
-      selector:
-        select:
-          options:
-            - heater
-            - ventilation
     timer_index:
       name: Timer index
-      description: Zero-based timer index in current timer list.
+      description: Zero-based index across timers (heater first, then ventilation).
       required: true
       selector:
         number:

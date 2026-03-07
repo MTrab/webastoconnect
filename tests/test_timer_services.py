@@ -87,6 +87,33 @@ async def test_async_update_timer_replaces_selected_index() -> None:
 
 
 @pytest.mark.asyncio
+async def test_async_update_timer_without_line_uses_combined_index() -> None:
+    """Update without line should resolve index across heater+ventilation timers."""
+    coordinator = _CoordinatorStub([])
+    coordinator.cloud.get_timers = AsyncMock(
+        side_effect=[
+            [SimpleTimer(start=600, duration=1800, repeat=64, enabled=True)],
+            [SimpleTimer(start=900, duration=1200, repeat=1, enabled=False)],
+        ]
+    )
+    coordinator.cloud.save_timers = AsyncMock()
+    device = SimpleNamespace(device_id="dev1")
+
+    await async_update_timer(
+        coordinator,
+        device,
+        timer_index=1,
+        timer_data={"enabled": True},
+        hass=SimpleNamespace(config=SimpleNamespace(time_zone="UTC")),
+    )
+
+    assert _line_value(coordinator.cloud.save_timers.await_args.kwargs["line"]) == "OUTV"
+    saved = coordinator.cloud.save_timers.await_args.kwargs["timers"]
+    assert len(saved) == 1
+    assert saved[0].enabled is True
+
+
+@pytest.mark.asyncio
 async def test_async_delete_timer_removes_selected_index() -> None:
     """Delete should remove one timer and save the remaining list."""
     coordinator = _CoordinatorStub(

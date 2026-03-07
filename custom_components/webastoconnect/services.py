@@ -277,21 +277,46 @@ async def async_update_timer(
     device: Any,
     timer_index: int,
     timer_data: dict[str, Any],
-    line: str,
+    line: str | None = None,
     hass: HomeAssistant | None = None,
 ) -> None:
     """Update timer at index and persist full timer list."""
 
     async def _operation() -> None:
-        output = _output_for_line(line)
-        timers = await coordinator.cloud.get_timers(device=device, line=output)
-        if timer_index >= len(timers):
-            raise HomeAssistantError(
-                f"timer_index '{timer_index}' out of range (timers: {len(timers)})"
+        selected_index = timer_index
+        total_timers = 0
+
+        if line is not None:
+            output = _output_for_line(line)
+            timers = await coordinator.cloud.get_timers(device=device, line=output)
+            total_timers = len(timers)
+        else:
+            heater_timers = await coordinator.cloud.get_timers(
+                device=device, line=Outputs.HEATER
             )
-        timers[timer_index] = _coerce_timer(
+            if timer_index < len(heater_timers):
+                output = Outputs.HEATER
+                timers = heater_timers
+            else:
+                vent_timers = await coordinator.cloud.get_timers(
+                    device=device, line=Outputs.VENTILATION
+                )
+                selected_index = timer_index - len(heater_timers)
+                output = Outputs.VENTILATION
+                timers = vent_timers
+                total_timers = len(heater_timers) + len(vent_timers)
+
+            if total_timers == 0:
+                total_timers = len(timers)
+
+        if selected_index >= len(timers):
+            raise HomeAssistantError(
+                f"timer_index '{timer_index}' out of range (timers: {total_timers})"
+            )
+
+        timers[selected_index] = _coerce_timer(
             timer_data,
-            existing=timers[timer_index],
+            existing=timers[selected_index],
             hass=hass,
         )
         await coordinator.cloud.save_timers(device=device, timers=timers, line=output)
@@ -340,7 +365,11 @@ async def _async_handle_update_timer(hass: HomeAssistant, call: ServiceCall) -> 
     coordinator, device = _coordinator_and_device(hass, call.data[ATTR_DEVICE_ID])
     _ensure_timer_api_support(coordinator)
     timer_index = int(call.data[ATTR_TIMER_INDEX])
-    line = str(call.data.get(ATTR_LINE, LINE_HEATER))
+    line = (
+        str(call.data[ATTR_LINE])
+        if ATTR_LINE in call.data and call.data[ATTR_LINE] is not None
+        else None
+    )
 
     try:
         await async_update_timer(
