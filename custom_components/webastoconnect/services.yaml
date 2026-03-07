@@ -68,7 +68,9 @@ create_timer:
 
 update_timer:
   name: Update timer
-  description: Update an existing simple heater timer by index.
+  description: >-
+    Update an existing simple timer by index. Only fields provided in the action
+    are changed; omitted fields keep their current value.
   fields:
     device_id:
       name: Device
