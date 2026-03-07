@@ -3,11 +3,12 @@ create_timer:
   description: Create a new simple heater timer for a Webasto device.
   fields:
     device_id:
-      name: Device ID
-      description: Webasto API device id.
+      name: Device
+      description: Vælg Webasto-enhed.
       required: true
       selector:
-        text:
+        device:
+          integration: webastoconnect
     line:
       name: Output line
       description: Timer line to modify (`OUTH` heater or `OUTV` ventilation).
@@ -70,11 +71,12 @@ update_timer:
   description: Update an existing simple heater timer by index.
   fields:
     device_id:
-      name: Device ID
-      description: Webasto API device id.
+      name: Device
+      description: Vælg Webasto-enhed.
       required: true
       selector:
-        text:
+        device:
+          integration: webastoconnect
     line:
       name: Output line
       description: Timer line to modify (`OUTH` heater or `OUTV` ventilation).
@@ -144,11 +146,12 @@ delete_timer:
   description: Delete a simple heater timer by index.
   fields:
     device_id:
-      name: Device ID
-      description: Webasto API device id.
+      name: Device
+      description: Vælg Webasto-enhed.
       required: true
       selector:
-        text:
+        device:
+          integration: webastoconnect
     line:
       name: Output line
       description: Timer line to modify (`OUTH` heater or `OUTV` ventilation).

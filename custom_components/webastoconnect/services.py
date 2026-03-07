@@ -10,6 +10,7 @@ import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
 try:
@@ -96,7 +97,8 @@ _DELETE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
 
 
 def _coordinator_and_device(hass: HomeAssistant, device_id: str) -> tuple[Any, Any]:
-    """Resolve coordinator + device by API device id."""
+    """Resolve coordinator + device from HA device id or Webasto API device id."""
+    # Backwards compatibility for callers that still pass API device id directly.
     for entry in hass.config_entries.async_entries(DOMAIN):
         runtime_data = getattr(entry, "runtime_data", None)
         if runtime_data is None:
@@ -105,6 +107,25 @@ def _coordinator_and_device(hass: HomeAssistant, device_id: str) -> tuple[Any, A
         for cloud_device in coordinator.cloud.devices.values():
             if str(cloud_device.device_id) == str(device_id):
                 return coordinator, cloud_device
+
+    # Preferred path: device selector value (HA device registry id).
+    device_registry = dr.async_get(hass)
+    ha_device = device_registry.async_get(str(device_id))
+    if ha_device is not None:
+        internal_device_ids = {
+            identifier
+            for domain, identifier in ha_device.identifiers
+            if domain == DOMAIN
+        }
+
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            runtime_data = getattr(entry, "runtime_data", None)
+            if runtime_data is None:
+                continue
+            coordinator = runtime_data.coordinator
+            for internal_id, cloud_device in coordinator.cloud.devices.items():
+                if str(internal_id) in internal_device_ids:
+                    return coordinator, cloud_device
 
     raise HomeAssistantError(f"No Webasto device found with device_id '{device_id}'")
 
