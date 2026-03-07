@@ -291,25 +291,34 @@ async def _async_handle_delete_timer(hass: HomeAssistant, call: ServiceCall) -> 
 
 def async_register_services(hass: HomeAssistant) -> None:
     """Register domain services."""
+    async def _handle_create(call: ServiceCall) -> None:
+        await _async_handle_create_timer(hass, call)
+
+    async def _handle_update(call: ServiceCall) -> None:
+        await _async_handle_update_timer(hass, call)
+
+    async def _handle_delete(call: ServiceCall) -> None:
+        await _async_handle_delete_timer(hass, call)
+
     if not hass.services.has_service(DOMAIN, SERVICE_CREATE_TIMER):
         hass.services.async_register(
             DOMAIN,
             SERVICE_CREATE_TIMER,
-            lambda call: _async_handle_create_timer(hass, call),
+            _handle_create,
             schema=_CREATE_TIMER_SCHEMA,
         )
     if not hass.services.has_service(DOMAIN, SERVICE_UPDATE_TIMER):
         hass.services.async_register(
             DOMAIN,
             SERVICE_UPDATE_TIMER,
-            lambda call: _async_handle_update_timer(hass, call),
+            _handle_update,
             schema=_UPDATE_TIMER_SCHEMA,
         )
     if not hass.services.has_service(DOMAIN, SERVICE_DELETE_TIMER):
         hass.services.async_register(
             DOMAIN,
             SERVICE_DELETE_TIMER,
-            lambda call: _async_handle_delete_timer(hass, call),
+            _handle_delete,
             schema=_DELETE_TIMER_SCHEMA,
         )
 
