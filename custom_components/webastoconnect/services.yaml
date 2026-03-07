@@ -1,0 +1,184 @@
+create_timer:
+  name: Create timer
+  description: Create a new simple heater timer for a Webasto device.
+  fields:
+    device_id:
+      name: Device
+      description: Vælg Webasto-enhed.
+      required: true
+      selector:
+        device:
+          integration: webastoconnect
+    line:
+      name: Output line
+      description: Timer line to modify.
+      required: false
+      default: heater
+      selector:
+        select:
+          options:
+            - heater
+            - ventilation
+    start_time:
+      name: Start time
+      description: Local clock time for timer start.
+      required: true
+      selector:
+        time:
+    duration_minutes:
+      name: Duration
+      description: Duration in minutes.
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 1440
+          mode: box
+    repeat_days:
+      name: Repeat days
+      description: Days when timer should run. Leave empty for non-repeating timer.
+      required: false
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Monday
+              value: monday
+            - label: Tuesday
+              value: tuesday
+            - label: Wednesday
+              value: wednesday
+            - label: Thursday
+              value: thursday
+            - label: Friday
+              value: friday
+            - label: Saturday
+              value: saturday
+            - label: Sunday
+              value: sunday
+    enabled:
+      name: Enabled
+      description: Whether timer is enabled.
+      required: false
+      default: true
+      selector:
+        boolean:
+    latitude:
+      name: Latitude
+      description: Optional latitude. If set, longitude must also be set.
+      required: false
+      selector:
+        text:
+    longitude:
+      name: Longitude
+      description: Optional longitude. If set, latitude must also be set.
+      required: false
+      selector:
+        text:
+
+update_timer:
+  name: Update timer
+  description: >-
+    Update an existing simple timer by index. Only fields provided in the action
+    are changed; omitted fields keep their current value.
+  fields:
+    device_id:
+      name: Device
+      description: Vælg Webasto-enhed.
+      required: true
+      selector:
+        device:
+          integration: webastoconnect
+    timer_index:
+      name: Timer index
+      description: Zero-based index across timers (heater first, then ventilation).
+      required: true
+      selector:
+        number:
+          min: 0
+          mode: box
+    start_time:
+      name: Start time
+      description: Local clock time for timer start.
+      required: false
+      selector:
+        time:
+    duration_minutes:
+      name: Duration
+      description: Duration in minutes.
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 1440
+          mode: box
+    repeat_days:
+      name: Repeat days
+      description: Days when timer should run. Leave empty for non-repeating timer.
+      required: false
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Monday
+              value: monday
+            - label: Tuesday
+              value: tuesday
+            - label: Wednesday
+              value: wednesday
+            - label: Thursday
+              value: thursday
+            - label: Friday
+              value: friday
+            - label: Saturday
+              value: saturday
+            - label: Sunday
+              value: sunday
+    enabled:
+      name: Enabled
+      description: Whether timer is enabled.
+      required: false
+      selector:
+        boolean:
+    latitude:
+      name: Latitude
+      description: Optional latitude. If set, longitude must also be set.
+      required: false
+      selector:
+        text:
+    longitude:
+      name: Longitude
+      description: Optional longitude. If set, latitude must also be set.
+      required: false
+      selector:
+        text:
+
+delete_timer:
+  name: Delete timer
+  description: Delete a simple heater timer by index.
+  fields:
+    device_id:
+      name: Device
+      description: Vælg Webasto-enhed.
+      required: true
+      selector:
+        device:
+          integration: webastoconnect
+    line:
+      name: Output line
+      description: Timer line to modify.
+      required: false
+      default: heater
+      selector:
+        select:
+          options:
+            - heater
+            - ventilation
+    timer_index:
+      name: Timer index
+      description: Zero-based timer index in current timer list.
+      required: true
+      selector:
+        number:
+          min: 0
+          mode: box

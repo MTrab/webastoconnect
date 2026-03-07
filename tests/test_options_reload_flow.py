@@ -13,9 +13,15 @@ from custom_components.webastoconnect.config_flow import WebastoConnectOptionsFl
 @pytest.mark.asyncio
 async def test_async_setup_entry_registers_update_listener(monkeypatch) -> None:
     """Setup should register a config entry update listener."""
+    services = SimpleNamespace(
+        has_service=Mock(return_value=False),
+        async_register=Mock(),
+        async_remove=Mock(),
+    )
     hass = SimpleNamespace(
         data={},
         config_entries=SimpleNamespace(async_forward_entry_setups=AsyncMock()),
+        services=services,
     )
     remove_listener = Mock()
     entry = SimpleNamespace(entry_id="entry-1", add_update_listener=Mock())
@@ -39,12 +45,21 @@ async def test_async_setup_entry_registers_update_listener(monkeypatch) -> None:
 async def test_async_unload_entry_calls_remove_listener_on_success() -> None:
     """Unload should unsubscribe update listener before removing entry data."""
     remove_listener = Mock()
+    services = SimpleNamespace(
+        has_service=Mock(return_value=True),
+        async_register=Mock(),
+        async_remove=Mock(),
+    )
     entry = SimpleNamespace(
         entry_id="entry-1",
         runtime_data=SimpleNamespace(update_listener=remove_listener),
     )
     hass = SimpleNamespace(
-        config_entries=SimpleNamespace(async_unload_platforms=AsyncMock(return_value=True)),
+        config_entries=SimpleNamespace(
+            async_unload_platforms=AsyncMock(return_value=True),
+            async_entries=Mock(return_value=[]),
+        ),
+        services=services,
     )
 
     unload_ok = await integration.async_unload_entry(hass, entry)
@@ -76,7 +91,9 @@ async def test_options_flow_creates_entry_after_successful_auth(monkeypatch) -> 
     flow = object.__new__(WebastoConnectOptionsFlow)
     config_entry = SimpleNamespace(data={}, options={})
     flow.hass = SimpleNamespace(
-        config_entries=SimpleNamespace(async_get_known_entry=Mock(return_value=config_entry))
+        config_entries=SimpleNamespace(
+            async_get_known_entry=Mock(return_value=config_entry)
+        )
     )
     flow.handler = "entry-1"
     flow.async_create_entry = Mock(return_value={"type": "create_entry"})
@@ -112,7 +129,9 @@ async def test_options_flow_returns_error_on_invalid_auth(monkeypatch) -> None:
     flow = object.__new__(WebastoConnectOptionsFlow)
     config_entry = SimpleNamespace(data={}, options={})
     flow.hass = SimpleNamespace(
-        config_entries=SimpleNamespace(async_get_known_entry=Mock(return_value=config_entry))
+        config_entries=SimpleNamespace(
+            async_get_known_entry=Mock(return_value=config_entry)
+        )
     )
     flow.handler = "entry-1"
     flow.async_show_form = Mock(return_value={"type": "form"})
