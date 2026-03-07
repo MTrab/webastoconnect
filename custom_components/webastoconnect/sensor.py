@@ -20,7 +20,7 @@ from .base import WebastoBaseEntity, WebastoConnectSensorEntityDescription
 
 LOGGER = logging.getLogger(__name__)
 MAIN_OUTPUT_LINES = {"OUTH", "OUTV"}
-HEATER_LINE = "OUTH"
+TIMER_LINES = {"OUTH", "OUTV"}
 WEEKDAY_BITMASK = [64, 1, 2, 4, 8, 16, 32]  # Monday..Sunday (confirmed in pywebasto)
 
 
@@ -61,8 +61,8 @@ def _main_output_end_name(webasto) -> str:
     return "Output ends"
 
 
-def _extract_simple_heater_timers(webasto: Any) -> list[dict[str, Any]]:
-    """Extract `simple` heater timers from latest API payload."""
+def _extract_simple_timers(webasto: Any) -> list[dict[str, Any]]:
+    """Extract `simple` timers (heater + ventilation) from latest API payload."""
     last_data = getattr(webasto, "last_data", None)
     if not isinstance(last_data, dict):
         return []
@@ -73,14 +73,22 @@ def _extract_simple_heater_timers(webasto: Any) -> list[dict[str, Any]]:
         if not isinstance(outputs, list):
             continue
         for output in outputs:
-            if not isinstance(output, dict) or output.get("line") != HEATER_LINE:
+            if not isinstance(output, dict):
+                continue
+            line = output.get("line")
+            if line not in TIMER_LINES:
                 continue
             output_timers = output.get("timers")
             if not isinstance(output_timers, list):
                 continue
             for timer in output_timers:
                 if isinstance(timer, dict) and timer.get("type") == "simple":
-                    timers.append(timer)
+                    timers.append(
+                        {
+                            **timer,
+                            "line": line,
+                        }
+                    )
     return timers
 
 
@@ -142,7 +150,7 @@ def _next_timer_sensor_payload(
 ) -> tuple[datetime | None, dict[str, Any]]:
     """Build state + attributes for next-enabled-timer sensor."""
     now = now_utc or datetime.now(UTC)
-    timers = _extract_simple_heater_timers(webasto)
+    timers = _extract_simple_timers(webasto)
 
     timer_items: list[dict[str, Any]] = []
     next_index: int | None = None
@@ -168,6 +176,7 @@ def _next_timer_sensor_payload(
 
         item = {
             "index": index,
+            "line": timer.get("line"),
             "start": start,
             "start_hhmm_utc": _timer_start_hhmm(start) if start > 0 else None,
             "duration": duration,

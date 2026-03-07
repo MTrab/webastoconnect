@@ -7,6 +7,7 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.webastoconnect.services import (
+    LINE_VENTILATION,
     SimpleTimer,
     async_create_timer,
     async_delete_timer,
@@ -30,6 +31,11 @@ class _CoordinatorStub:
         return await cloud_call(*args, **kwargs)
 
 
+def _line_value(line: object) -> str:
+    """Return string value from enum-like line objects."""
+    return getattr(line, "value", line)
+
+
 @pytest.mark.asyncio
 async def test_async_create_timer_appends_and_saves_full_list() -> None:
     """Create should append timer and save full timer list."""
@@ -38,10 +44,12 @@ async def test_async_create_timer_appends_and_saves_full_list() -> None:
     coordinator = _CoordinatorStub([existing])
     device = SimpleNamespace(device_id="dev1")
 
-    await async_create_timer(coordinator, device, new_timer)
+    await async_create_timer(coordinator, device, new_timer, line=LINE_VENTILATION)
 
-    coordinator.cloud.get_timers.assert_awaited_once_with(device=device)
+    coordinator.cloud.get_timers.assert_awaited_once()
+    assert _line_value(coordinator.cloud.get_timers.await_args.kwargs["line"]) == "OUTV"
     coordinator.cloud.save_timers.assert_awaited_once()
+    assert _line_value(coordinator.cloud.save_timers.await_args.kwargs["line"]) == "OUTV"
     saved = coordinator.cloud.save_timers.await_args.kwargs["timers"]
     assert len(saved) == 2
     assert saved[1].start == 700
@@ -65,8 +73,10 @@ async def test_async_update_timer_replaces_selected_index() -> None:
         device,
         timer_index=1,
         timer_data={"enabled": True, "duration": 3600},
+        line=LINE_VENTILATION,
     )
 
+    assert _line_value(coordinator.cloud.save_timers.await_args.kwargs["line"]) == "OUTV"
     saved = coordinator.cloud.save_timers.await_args.kwargs["timers"]
     assert saved[0].start == 600
     assert saved[1].start == 900
@@ -86,8 +96,9 @@ async def test_async_delete_timer_removes_selected_index() -> None:
     )
     device = SimpleNamespace(device_id="dev1")
 
-    await async_delete_timer(coordinator, device, timer_index=0)
+    await async_delete_timer(coordinator, device, timer_index=0, line=LINE_VENTILATION)
 
+    assert _line_value(coordinator.cloud.save_timers.await_args.kwargs["line"]) == "OUTV"
     saved = coordinator.cloud.save_timers.await_args.kwargs["timers"]
     assert len(saved) == 1
     assert saved[0].start == 900
@@ -106,6 +117,7 @@ async def test_async_update_timer_raises_for_invalid_index() -> None:
             device,
             timer_index=4,
             timer_data={"enabled": False},
+            line=LINE_VENTILATION,
         )
 
     coordinator.cloud.save_timers.assert_not_awaited()
@@ -118,6 +130,11 @@ async def test_async_delete_timer_raises_for_invalid_index() -> None:
     device = SimpleNamespace(device_id="dev1")
 
     with pytest.raises(HomeAssistantError):
-        await async_delete_timer(coordinator, device, timer_index=7)
+        await async_delete_timer(
+            coordinator,
+            device,
+            timer_index=7,
+            line=LINE_VENTILATION,
+        )
 
     coordinator.cloud.save_timers.assert_not_awaited()

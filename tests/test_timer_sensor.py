@@ -41,6 +41,7 @@ def test_next_timer_sensor_payload_selects_soonest_enabled_timer() -> None:
 
     assert state == datetime(2026, 3, 2, 10, 0, tzinfo=UTC)
     assert attributes["next_timer_index"] == 0
+    assert attributes["next_timer"]["line"] == "OUTH"
     assert len(attributes["timers"]) == 2
 
 
@@ -87,3 +88,46 @@ def test_next_timer_sensor_payload_includes_timers_from_disabled_outputs() -> No
     assert len(attributes["timers"]) == 2
     assert attributes["timers"][0]["enabled"] is False
     assert attributes["timers"][1]["enabled"] is True
+
+
+def test_next_timer_sensor_payload_includes_ventilation_line() -> None:
+    """Next timer can come from OUTV when it is earlier than OUTH."""
+    webasto = SimpleNamespace(
+        last_data={
+            "outputs": [
+                {
+                    "line": "OUTH",
+                    "timers": [
+                        {
+                            "type": "simple",
+                            "start": 610,  # 10:10
+                            "duration": 1800,
+                            "repeat": 64,
+                            "enabled": True,
+                        }
+                    ],
+                },
+                {
+                    "line": "OUTV",
+                    "timers": [
+                        {
+                            "type": "simple",
+                            "start": 605,  # 10:05
+                            "duration": 1800,
+                            "repeat": 64,
+                            "enabled": True,
+                        }
+                    ],
+                },
+            ],
+            "disabled_outputs": [],
+        }
+    )
+
+    state, attributes = _next_timer_sensor_payload(
+        webasto, now_utc=datetime(2026, 3, 2, 9, 0, tzinfo=UTC)
+    )
+
+    assert state == datetime(2026, 3, 2, 10, 5, tzinfo=UTC)
+    assert attributes["next_timer"]["line"] == "OUTV"
+    assert {timer["line"] for timer in attributes["timers"]} == {"OUTH", "OUTV"}

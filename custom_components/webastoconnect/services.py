@@ -14,6 +14,7 @@ from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
 try:
     from pywebasto import SimpleTimer
+    from pywebasto.enums import Outputs
 except ImportError:
 
     @dataclass(slots=True)
@@ -26,6 +27,18 @@ except ImportError:
         latitude: str | None = None
         longitude: str | None = None
         enabled: bool = True
+
+    @dataclass(frozen=True, slots=True)
+    class _OutputLine:
+        """Fallback enum-like output line wrapper."""
+
+        value: str
+
+    class Outputs:  # type: ignore[no-redef]
+        """Fallback output constants for environments without timer build."""
+
+        HEATER = _OutputLine("OUTH")
+        VENTILATION = _OutputLine("OUTV")
 
 
 from .const import (
@@ -45,10 +58,15 @@ ATTR_REPEAT = "repeat"
 ATTR_ENABLED = "enabled"
 ATTR_LATITUDE = "latitude"
 ATTR_LONGITUDE = "longitude"
+ATTR_LINE = "line"
+LINE_HEATER = "OUTH"
+LINE_VENTILATION = "OUTV"
+VALID_TIMER_LINES = (LINE_HEATER, LINE_VENTILATION)
 
 _BASE_SCHEMA = vol.Schema({vol.Required(ATTR_DEVICE_ID): cv.string})
 _CREATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
     {
+        vol.Optional(ATTR_LINE, default=LINE_HEATER): vol.In(VALID_TIMER_LINES),
         vol.Required(ATTR_START): vol.All(vol.Coerce(int), vol.Range(min=1)),
         vol.Required(ATTR_DURATION): vol.All(vol.Coerce(int), vol.Range(min=1)),
         vol.Required(ATTR_REPEAT): vol.All(vol.Coerce(int), vol.Range(min=0)),
@@ -59,6 +77,7 @@ _CREATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
 )
 _UPDATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
     {
+        vol.Optional(ATTR_LINE, default=LINE_HEATER): vol.In(VALID_TIMER_LINES),
         vol.Required(ATTR_TIMER_INDEX): vol.All(vol.Coerce(int), vol.Range(min=0)),
         vol.Optional(ATTR_START): vol.All(vol.Coerce(int), vol.Range(min=1)),
         vol.Optional(ATTR_DURATION): vol.All(vol.Coerce(int), vol.Range(min=1)),
@@ -70,6 +89,7 @@ _UPDATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
 )
 _DELETE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
     {
+        vol.Optional(ATTR_LINE, default=LINE_HEATER): vol.In(VALID_TIMER_LINES),
         vol.Required(ATTR_TIMER_INDEX): vol.All(vol.Coerce(int), vol.Range(min=0)),
     }
 )
@@ -98,6 +118,13 @@ def _ensure_timer_api_support(coordinator: Any) -> None:
             "Installed pywebasto version does not support timers. "
             "Use timer-enabled pywebasto build."
         )
+
+
+def _output_for_line(line: str) -> Any:
+    """Map API line id to pywebasto Outputs value."""
+    if line == LINE_VENTILATION:
+        return Outputs.VENTILATION
+    return Outputs.HEATER
 
 
 def _coerce_timer(
@@ -131,13 +158,19 @@ def _coerce_timer(
     )
 
 
-async def async_create_timer(coordinator: Any, device: Any, timer: SimpleTimer) -> None:
+async def async_create_timer(
+    coordinator: Any,
+    device: Any,
+    timer: SimpleTimer,
+    line: str,
+) -> None:
     """Create timer by appending to current timer list."""
 
     async def _operation() -> None:
-        timers = await coordinator.cloud.get_timers(device=device)
+        output = _output_for_line(line)
+        timers = await coordinator.cloud.get_timers(device=device, line=output)
         timers.append(timer)
-        await coordinator.cloud.save_timers(device=device, timers=timers)
+        await coordinator.cloud.save_timers(device=device, timers=timers, line=output)
 
     await coordinator.async_execute_cloud_call(_operation)
     coordinator.async_update_listeners()
@@ -148,33 +181,41 @@ async def async_update_timer(
     device: Any,
     timer_index: int,
     timer_data: dict[str, Any],
+    line: str,
 ) -> None:
     """Update timer at index and persist full timer list."""
 
     async def _operation() -> None:
-        timers = await coordinator.cloud.get_timers(device=device)
+        output = _output_for_line(line)
+        timers = await coordinator.cloud.get_timers(device=device, line=output)
         if timer_index >= len(timers):
             raise HomeAssistantError(
                 f"timer_index '{timer_index}' out of range (timers: {len(timers)})"
             )
         timers[timer_index] = _coerce_timer(timer_data, existing=timers[timer_index])
-        await coordinator.cloud.save_timers(device=device, timers=timers)
+        await coordinator.cloud.save_timers(device=device, timers=timers, line=output)
 
     await coordinator.async_execute_cloud_call(_operation)
     coordinator.async_update_listeners()
 
 
-async def async_delete_timer(coordinator: Any, device: Any, timer_index: int) -> None:
+async def async_delete_timer(
+    coordinator: Any,
+    device: Any,
+    timer_index: int,
+    line: str,
+) -> None:
     """Delete timer at index and persist full timer list."""
 
     async def _operation() -> None:
-        timers = await coordinator.cloud.get_timers(device=device)
+        output = _output_for_line(line)
+        timers = await coordinator.cloud.get_timers(device=device, line=output)
         if timer_index >= len(timers):
             raise HomeAssistantError(
                 f"timer_index '{timer_index}' out of range (timers: {len(timers)})"
             )
         del timers[timer_index]
-        await coordinator.cloud.save_timers(device=device, timers=timers)
+        await coordinator.cloud.save_timers(device=device, timers=timers, line=output)
 
     await coordinator.async_execute_cloud_call(_operation)
     coordinator.async_update_listeners()
@@ -185,9 +226,10 @@ async def _async_handle_create_timer(hass: HomeAssistant, call: ServiceCall) -> 
     coordinator, device = _coordinator_and_device(hass, call.data[ATTR_DEVICE_ID])
     _ensure_timer_api_support(coordinator)
     timer = _coerce_timer(dict(call.data))
+    line = str(call.data.get(ATTR_LINE, LINE_HEATER))
 
     try:
-        await async_create_timer(coordinator, device, timer)
+        await async_create_timer(coordinator, device, timer, line)
     except (InvalidRequestException, UnauthorizedException) as err:
         raise HomeAssistantError(f"Failed to create timer: {err}") from err
 
@@ -197,9 +239,10 @@ async def _async_handle_update_timer(hass: HomeAssistant, call: ServiceCall) -> 
     coordinator, device = _coordinator_and_device(hass, call.data[ATTR_DEVICE_ID])
     _ensure_timer_api_support(coordinator)
     timer_index = int(call.data[ATTR_TIMER_INDEX])
+    line = str(call.data.get(ATTR_LINE, LINE_HEATER))
 
     try:
-        await async_update_timer(coordinator, device, timer_index, dict(call.data))
+        await async_update_timer(coordinator, device, timer_index, dict(call.data), line)
     except (InvalidRequestException, UnauthorizedException) as err:
         raise HomeAssistantError(f"Failed to update timer: {err}") from err
 
@@ -209,9 +252,10 @@ async def _async_handle_delete_timer(hass: HomeAssistant, call: ServiceCall) -> 
     coordinator, device = _coordinator_and_device(hass, call.data[ATTR_DEVICE_ID])
     _ensure_timer_api_support(coordinator)
     timer_index = int(call.data[ATTR_TIMER_INDEX])
+    line = str(call.data.get(ATTR_LINE, LINE_HEATER))
 
     try:
-        await async_delete_timer(coordinator, device, timer_index)
+        await async_delete_timer(coordinator, device, timer_index, line)
     except (InvalidRequestException, UnauthorizedException) as err:
         raise HomeAssistantError(f"Failed to delete timer: {err}") from err
 

@@ -8,6 +8,16 @@ create_timer:
       required: true
       selector:
         text:
+    line:
+      name: Output line
+      description: Timer line to modify (`OUTH` heater or `OUTV` ventilation).
+      required: false
+      default: OUTH
+      selector:
+        select:
+          options:
+            - OUTH
+            - OUTV
     start:
       name: Start
       description: Timer start in minutes after midnight (UTC).
@@ -65,6 +75,16 @@ update_timer:
       required: true
       selector:
         text:
+    line:
+      name: Output line
+      description: Timer line to modify (`OUTH` heater or `OUTV` ventilation).
+      required: false
+      default: OUTH
+      selector:
+        select:
+          options:
+            - OUTH
+            - OUTV
     timer_index:
       name: Timer index
       description: Zero-based timer index in current timer list.
@@ -129,6 +149,16 @@ delete_timer:
       required: true
       selector:
         text:
+    line:
+      name: Output line
+      description: Timer line to modify (`OUTH` heater or `OUTV` ventilation).
+      required: false
+      default: OUTH
+      selector:
+        select:
+          options:
+            - OUTH
+            - OUTV
     timer_index:
       name: Timer index
       description: Zero-based timer index in current timer list.
