@@ -162,13 +162,32 @@ def _coerce_timer(
     existing: Any | None = None,
 ) -> SimpleTimer:
     """Build a SimpleTimer from service data, optionally patching an existing timer."""
+    def _normalize_geo(value: Any) -> str | None:
+        """Normalize user-provided geo values."""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = value.strip()
+            if normalized.lower() in {"", "null", "none", "nan"}:
+                return None
+            return normalized
+        return str(value)
+
     start = data.get(ATTR_START, getattr(existing, "start", None))
     duration = data.get(ATTR_DURATION, getattr(existing, "duration", None))
     repeat = data.get(ATTR_REPEAT, getattr(existing, "repeat", None))
     enabled = data.get(ATTR_ENABLED, getattr(existing, "enabled", True))
 
-    latitude = data.get(ATTR_LATITUDE, getattr(existing, "latitude", None))
-    longitude = data.get(ATTR_LONGITUDE, getattr(existing, "longitude", None))
+    latitude = (
+        _normalize_geo(data.get(ATTR_LATITUDE))
+        if ATTR_LATITUDE in data
+        else _normalize_geo(getattr(existing, "latitude", None))
+    )
+    longitude = (
+        _normalize_geo(data.get(ATTR_LONGITUDE))
+        if ATTR_LONGITUDE in data
+        else _normalize_geo(getattr(existing, "longitude", None))
+    )
     if (latitude is None) != (longitude is None):
         raise HomeAssistantError(
             "latitude and longitude must both be provided or both be omitted"
@@ -182,8 +201,8 @@ def _coerce_timer(
         duration=int(duration),
         repeat=int(repeat),
         enabled=bool(enabled),
-        latitude=None if latitude is None else str(latitude),
-        longitude=None if longitude is None else str(longitude),
+        latitude=latitude,
+        longitude=longitude,
     )
 
 

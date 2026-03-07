@@ -138,3 +138,33 @@ async def test_async_delete_timer_raises_for_invalid_index() -> None:
         )
 
     coordinator.cloud.save_timers.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_async_update_timer_clears_location_from_null_values() -> None:
+    """Update should remove location when null-like values are provided."""
+    coordinator = _CoordinatorStub(
+        [
+            SimpleTimer(
+                start=600,
+                duration=1800,
+                repeat=64,
+                enabled=True,
+                latitude="56.1",
+                longitude="10.2",
+            )
+        ]
+    )
+    device = SimpleNamespace(device_id="dev1")
+
+    await async_update_timer(
+        coordinator,
+        device,
+        timer_index=0,
+        timer_data={"latitude": "null", "longitude": "null"},
+        line=LINE_VENTILATION,
+    )
+
+    saved = coordinator.cloud.save_timers.await_args.kwargs["timers"]
+    assert saved[0].latitude is None
+    assert saved[0].longitude is None
