@@ -143,6 +143,15 @@ def _timer_start_hhmm(start: int) -> str:
     return f"{hour:02d}:{minute:02d}"
 
 
+def _line_label(line: str | None) -> str | None:
+    """Return user-friendly timer line label."""
+    if line == "OUTH":
+        return "Heater"
+    if line == "OUTV":
+        return "Ventilation"
+    return line
+
+
 def _next_timer_sensor_payload(
     webasto: Any,
     *,
@@ -176,7 +185,8 @@ def _next_timer_sensor_payload(
 
         item = {
             "index": index,
-            "line": timer.get("line"),
+            "line": _line_label(timer.get("line")),
+            "line_code": timer.get("line"),
             "start": start,
             "start_hhmm_utc": _timer_start_hhmm(start) if start > 0 else None,
             "duration": duration,

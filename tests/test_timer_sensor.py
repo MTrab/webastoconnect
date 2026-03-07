@@ -41,7 +41,8 @@ def test_next_timer_sensor_payload_selects_soonest_enabled_timer() -> None:
 
     assert state == datetime(2026, 3, 2, 10, 0, tzinfo=UTC)
     assert attributes["next_timer_index"] == 0
-    assert attributes["next_timer"]["line"] == "OUTH"
+    assert attributes["next_timer"]["line"] == "Heater"
+    assert attributes["next_timer"]["line_code"] == "OUTH"
     assert len(attributes["timers"]) == 2
 
 
@@ -129,5 +130,9 @@ def test_next_timer_sensor_payload_includes_ventilation_line() -> None:
     )
 
     assert state == datetime(2026, 3, 2, 10, 5, tzinfo=UTC)
-    assert attributes["next_timer"]["line"] == "OUTV"
-    assert {timer["line"] for timer in attributes["timers"]} == {"OUTH", "OUTV"}
+    assert attributes["next_timer"]["line"] == "Ventilation"
+    assert attributes["next_timer"]["line_code"] == "OUTV"
+    assert {timer["line"] for timer in attributes["timers"]} == {
+        "Heater",
+        "Ventilation",
+    }

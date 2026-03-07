@@ -60,9 +60,16 @@ ATTR_ENABLED = "enabled"
 ATTR_LATITUDE = "latitude"
 ATTR_LONGITUDE = "longitude"
 ATTR_LINE = "line"
-LINE_HEATER = "OUTH"
-LINE_VENTILATION = "OUTV"
-VALID_TIMER_LINES = (LINE_HEATER, LINE_VENTILATION)
+LINE_HEATER = "heater"
+LINE_VENTILATION = "ventilation"
+LINE_HEATER_LEGACY = "OUTH"
+LINE_VENTILATION_LEGACY = "OUTV"
+VALID_TIMER_LINES = (
+    LINE_HEATER,
+    LINE_VENTILATION,
+    LINE_HEATER_LEGACY,
+    LINE_VENTILATION_LEGACY,
+)
 
 _BASE_SCHEMA = vol.Schema({vol.Required(ATTR_DEVICE_ID): cv.string})
 _CREATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
@@ -143,7 +150,8 @@ def _ensure_timer_api_support(coordinator: Any) -> None:
 
 def _output_for_line(line: str) -> Any:
     """Map API line id to pywebasto Outputs value."""
-    if line == LINE_VENTILATION:
+    normalized = line.strip().lower()
+    if normalized in (LINE_VENTILATION, LINE_VENTILATION_LEGACY.lower()):
         return Outputs.VENTILATION
     return Outputs.HEATER
 

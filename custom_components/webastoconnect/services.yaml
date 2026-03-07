@@ -11,14 +11,14 @@ create_timer:
           integration: webastoconnect
     line:
       name: Output line
-      description: Timer line to modify (`OUTH` heater or `OUTV` ventilation).
+      description: Timer line to modify.
       required: false
-      default: OUTH
+      default: heater
       selector:
         select:
           options:
-            - OUTH
-            - OUTV
+            - heater
+            - ventilation
     start:
       name: Start
       description: Timer start in minutes after midnight (UTC).
@@ -79,14 +79,14 @@ update_timer:
           integration: webastoconnect
     line:
       name: Output line
-      description: Timer line to modify (`OUTH` heater or `OUTV` ventilation).
+      description: Timer line to modify.
       required: false
-      default: OUTH
+      default: heater
       selector:
         select:
           options:
-            - OUTH
-            - OUTV
+            - heater
+            - ventilation
     timer_index:
       name: Timer index
       description: Zero-based timer index in current timer list.
@@ -154,14 +154,14 @@ delete_timer:
           integration: webastoconnect
     line:
       name: Output line
-      description: Timer line to modify (`OUTH` heater or `OUTV` ventilation).
+      description: Timer line to modify.
       required: false
-      default: OUTH
+      default: heater
       selector:
         select:
           options:
-            - OUTH
-            - OUTV
+            - heater
+            - ventilation
     timer_index:
       name: Timer index
       description: Zero-based timer index in current timer list.
