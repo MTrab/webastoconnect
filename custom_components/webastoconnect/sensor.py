@@ -258,7 +258,7 @@ SENSORS = [
     ),
     WebastoConnectSensorEntityDescription(
         key="next_enabled_timer",
-        name="Next Timer",
+        name="Next start",
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=None,
         device_class=SensorDeviceClass.TIMESTAMP,
