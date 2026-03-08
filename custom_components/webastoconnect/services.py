@@ -88,7 +88,6 @@ WEEKDAY_TO_MASK = {
 _BASE_SCHEMA = vol.Schema({vol.Required(ATTR_DEVICE_ID): cv.string})
 _CREATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
     {
-        vol.Optional(ATTR_LINE, default=LINE_HEATER): vol.In(VALID_TIMER_LINES),
         vol.Required(ATTR_START_TIME): cv.string,
         vol.Required(ATTR_DURATION_MINUTES): vol.All(
             vol.Coerce(int), vol.Range(min=1)
@@ -290,12 +289,12 @@ async def async_create_timer(
     coordinator: Any,
     device: Any,
     timer: SimpleTimer,
-    line: str,
+    line: str | None = None,
 ) -> None:
     """Create timer by appending to current timer list."""
 
     async def _operation() -> None:
-        output = _output_for_line(line)
+        output = _output_for_line(line) if line is not None else _active_output_for_device(device)
         timers = await coordinator.cloud.get_timers(device=device, line=output)
         timers.append(timer)
         await coordinator.cloud.save_timers(device=device, timers=timers, line=output)
@@ -383,7 +382,11 @@ async def _async_handle_create_timer(hass: HomeAssistant, call: ServiceCall) -> 
     coordinator, device = _coordinator_and_device(hass, call.data[ATTR_DEVICE_ID])
     _ensure_timer_api_support(coordinator)
     timer = _coerce_timer(dict(call.data), hass=hass)
-    line = str(call.data.get(ATTR_LINE, LINE_HEATER))
+    line = (
+        str(call.data[ATTR_LINE])
+        if ATTR_LINE in call.data and call.data[ATTR_LINE] is not None
+        else None
+    )
 
     try:
         await async_create_timer(coordinator, device, timer, line)

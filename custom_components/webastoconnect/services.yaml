@@ -9,16 +9,6 @@ create_timer:
       selector:
         device:
           integration: webastoconnect
-    line:
-      name: Output line
-      description: Timer line to modify.
-      required: false
-      default: heater
-      selector:
-        select:
-          options:
-            - heater
-            - ventilation
     start_time:
       name: Start time
       description: Local clock time for timer start (HH:MM). Seconds are optional.

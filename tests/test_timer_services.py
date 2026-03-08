@@ -39,13 +39,13 @@ def _line_value(line: object) -> str:
 
 @pytest.mark.asyncio
 async def test_async_create_timer_appends_and_saves_full_list() -> None:
-    """Create should append timer and save full timer list."""
+    """Create should append timer and save full timer list on active line."""
     existing = SimpleTimer(start=600, duration=1800, repeat=64, enabled=True)
     new_timer = SimpleTimer(start=700, duration=1200, repeat=1, enabled=True)
     coordinator = _CoordinatorStub([existing])
-    device = SimpleNamespace(device_id="dev1")
+    device = SimpleNamespace(device_id="dev1", is_ventilation=True)
 
-    await async_create_timer(coordinator, device, new_timer, line=LINE_VENTILATION)
+    await async_create_timer(coordinator, device, new_timer)
 
     coordinator.cloud.get_timers.assert_awaited_once()
     assert _line_value(coordinator.cloud.get_timers.await_args.kwargs["line"]) == "OUTV"
@@ -56,6 +56,19 @@ async def test_async_create_timer_appends_and_saves_full_list() -> None:
     assert saved[1].start == 700
     assert coordinator.execute_calls == 1
     coordinator.async_update_listeners.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_create_timer_uses_heater_when_not_in_ventilation_mode() -> None:
+    """Create should target heater line when ventilation mode is off."""
+    existing = SimpleTimer(start=600, duration=1800, repeat=64, enabled=True)
+    new_timer = SimpleTimer(start=700, duration=1200, repeat=1, enabled=True)
+    coordinator = _CoordinatorStub([existing])
+    device = SimpleNamespace(device_id="dev1", is_ventilation=False)
+
+    await async_create_timer(coordinator, device, new_timer)
+
+    assert _line_value(coordinator.cloud.save_timers.await_args.kwargs["line"]) == "OUTH"
 
 
 @pytest.mark.asyncio
