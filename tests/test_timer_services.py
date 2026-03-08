@@ -152,7 +152,7 @@ async def test_async_update_timer_raises_for_invalid_index() -> None:
     coordinator = _CoordinatorStub([SimpleTimer(start=600, duration=1800, repeat=64)])
     device = SimpleNamespace(device_id="dev1")
 
-    with pytest.raises(HomeAssistantError):
+    with pytest.raises(HomeAssistantError) as exc_info:
         await async_update_timer(
             coordinator,
             device,
@@ -162,6 +162,34 @@ async def test_async_update_timer_raises_for_invalid_index() -> None:
         )
 
     coordinator.cloud.save_timers.assert_not_awaited()
+    assert "Valid range is 0..0" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_async_update_timer_without_line_invalid_index_has_friendly_error() -> None:
+    """Combined-index update should return clear range guidance on invalid index."""
+    coordinator = _CoordinatorStub([])
+    coordinator.cloud.get_timers = AsyncMock(
+        side_effect=[
+            [SimpleTimer(start=600, duration=1800, repeat=64, enabled=True)],
+            [],
+        ]
+    )
+    coordinator.cloud.save_timers = AsyncMock()
+    device = SimpleNamespace(device_id="dev1")
+
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await async_update_timer(
+            coordinator,
+            device,
+            timer_index=1,
+            timer_data={"enabled": True},
+            hass=SimpleNamespace(config=SimpleNamespace(time_zone="UTC")),
+        )
+
+    message = str(exc_info.value)
+    assert "heater first, then ventilation" in message
+    assert "Valid range is 0..0" in message
 
 
 @pytest.mark.asyncio

@@ -360,7 +360,7 @@ async def async_update_timer(
             _raise_timer_index_error(
                 timer_index,
                 total_timers,
-                scope="heater+ventilation timers",
+                scope="edit timer index (heater first, then ventilation)",
             )
 
         timers[selected_index] = _coerce_timer(
