@@ -21,7 +21,7 @@ create_timer:
             - ventilation
     start_time:
       name: Start time
-      description: Local clock time for timer start.
+      description: Local clock time for timer start (HH:MM). Seconds are optional.
       required: true
       selector:
         time:
@@ -99,7 +99,7 @@ update_timer:
           mode: box
     start_time:
       name: Start time
-      description: Local clock time for timer start.
+      description: Local clock time for timer start (HH:MM). Seconds are optional.
       required: false
       selector:
         time:
