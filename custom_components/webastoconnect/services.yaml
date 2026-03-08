@@ -155,7 +155,7 @@ update_timer:
 
 delete_timer:
   name: Delete timer
-  description: Delete a simple heater timer by index.
+  description: Delete a timer by index on the active output line (heater/ventilation mode).
   fields:
     device_id:
       name: Device
@@ -164,19 +164,9 @@ delete_timer:
       selector:
         device:
           integration: webastoconnect
-    line:
-      name: Output line
-      description: Timer line to modify.
-      required: false
-      default: heater
-      selector:
-        select:
-          options:
-            - heater
-            - ventilation
     timer_index:
       name: Timer index
-      description: Zero-based timer index in current timer list.
+      description: Zero-based index in timer list for active output line.
       required: true
       selector:
         number:

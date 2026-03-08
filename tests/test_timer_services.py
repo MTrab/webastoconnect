@@ -115,16 +115,16 @@ async def test_async_update_timer_without_line_uses_combined_index() -> None:
 
 @pytest.mark.asyncio
 async def test_async_delete_timer_removes_selected_index() -> None:
-    """Delete should remove one timer and save the remaining list."""
+    """Delete should remove one timer on active line and save remaining list."""
     coordinator = _CoordinatorStub(
         [
             SimpleTimer(start=600, duration=1800, repeat=64, enabled=True),
             SimpleTimer(start=900, duration=1200, repeat=1, enabled=False),
         ]
     )
-    device = SimpleNamespace(device_id="dev1")
+    device = SimpleNamespace(device_id="dev1", is_ventilation=True)
 
-    await async_delete_timer(coordinator, device, timer_index=0, line=LINE_VENTILATION)
+    await async_delete_timer(coordinator, device, timer_index=0)
 
     assert _line_value(coordinator.cloud.save_timers.await_args.kwargs["line"]) == "OUTV"
     saved = coordinator.cloud.save_timers.await_args.kwargs["timers"]
@@ -155,17 +155,23 @@ async def test_async_update_timer_raises_for_invalid_index() -> None:
 async def test_async_delete_timer_raises_for_invalid_index() -> None:
     """Delete should fail explicitly when timer index is out of range."""
     coordinator = _CoordinatorStub([SimpleTimer(start=600, duration=1800, repeat=64)])
-    device = SimpleNamespace(device_id="dev1")
+    device = SimpleNamespace(device_id="dev1", is_ventilation=True)
 
     with pytest.raises(HomeAssistantError):
-        await async_delete_timer(
-            coordinator,
-            device,
-            timer_index=7,
-            line=LINE_VENTILATION,
-        )
+        await async_delete_timer(coordinator, device, timer_index=7)
 
     coordinator.cloud.save_timers.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_async_delete_timer_uses_heater_when_not_in_ventilation_mode() -> None:
+    """Delete should target heater line when ventilation mode is off."""
+    coordinator = _CoordinatorStub([SimpleTimer(start=600, duration=1800, repeat=64)])
+    device = SimpleNamespace(device_id="dev1", is_ventilation=False)
+
+    await async_delete_timer(coordinator, device, timer_index=0)
+
+    assert _line_value(coordinator.cloud.save_timers.await_args.kwargs["line"]) == "OUTH"
 
 
 @pytest.mark.asyncio

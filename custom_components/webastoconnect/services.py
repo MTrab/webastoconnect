@@ -117,7 +117,6 @@ _UPDATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
 )
 _DELETE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
     {
-        vol.Optional(ATTR_LINE, default=LINE_HEATER): vol.In(VALID_TIMER_LINES),
         vol.Required(ATTR_TIMER_INDEX): vol.All(vol.Coerce(int), vol.Range(min=0)),
     }
 )
@@ -174,6 +173,11 @@ def _output_for_line(line: str) -> Any:
     if normalized in (LINE_VENTILATION, LINE_VENTILATION_LEGACY.lower()):
         return Outputs.VENTILATION
     return Outputs.HEATER
+
+
+def _active_output_for_device(device: Any) -> Any:
+    """Resolve active output line from current device mode."""
+    return Outputs.VENTILATION if bool(getattr(device, "is_ventilation", False)) else Outputs.HEATER
 
 
 def _coerce_timer(
@@ -357,12 +361,11 @@ async def async_delete_timer(
     coordinator: Any,
     device: Any,
     timer_index: int,
-    line: str,
 ) -> None:
     """Delete timer at index and persist full timer list."""
 
     async def _operation() -> None:
-        output = _output_for_line(line)
+        output = _active_output_for_device(device)
         timers = await coordinator.cloud.get_timers(device=device, line=output)
         if timer_index >= len(timers):
             raise HomeAssistantError(
@@ -417,10 +420,9 @@ async def _async_handle_delete_timer(hass: HomeAssistant, call: ServiceCall) -> 
     coordinator, device = _coordinator_and_device(hass, call.data[ATTR_DEVICE_ID])
     _ensure_timer_api_support(coordinator)
     timer_index = int(call.data[ATTR_TIMER_INDEX])
-    line = str(call.data.get(ATTR_LINE, LINE_HEATER))
 
     try:
-        await async_delete_timer(coordinator, device, timer_index, line)
+        await async_delete_timer(coordinator, device, timer_index)
     except (InvalidRequestException, UnauthorizedException) as err:
         raise HomeAssistantError(f"Failed to delete timer: {err}") from err
 
