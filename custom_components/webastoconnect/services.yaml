@@ -53,18 +53,12 @@ create_timer:
       default: true
       selector:
         boolean:
-    latitude:
-      name: Latitude
-      description: Optional latitude. If set, longitude must also be set.
+    location:
+      name: Location
+      description: Optional map location for timer.
       required: false
       selector:
-        text:
-    longitude:
-      name: Longitude
-      description: Optional longitude. If set, latitude must also be set.
-      required: false
-      selector:
-        text:
+        location:
 
 update_timer:
   name: Update timer
@@ -136,18 +130,12 @@ update_timer:
       required: false
       selector:
         boolean:
-    latitude:
-      name: Latitude
-      description: Optional latitude. If set, longitude must also be set.
+    location:
+      name: Location
+      description: Optional map location for timer. Cannot be used with Clear location.
       required: false
       selector:
-        text:
-    longitude:
-      name: Longitude
-      description: Optional longitude. If set, latitude must also be set.
-      required: false
-      selector:
-        text:
+        location:
 
 delete_timer:
   name: Delete timer

@@ -62,6 +62,7 @@ ATTR_DURATION_MINUTES = "duration_minutes"
 ATTR_REPEAT = "repeat"
 ATTR_REPEAT_DAYS = "repeat_days"
 ATTR_ENABLED = "enabled"
+ATTR_LOCATION = "location"
 ATTR_LATITUDE = "latitude"
 ATTR_LONGITUDE = "longitude"
 ATTR_CLEAR_LOCATION = "clear_location"
@@ -96,6 +97,13 @@ _CREATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
         vol.Optional(ATTR_REPEAT_DAYS, default=[]): [vol.In(tuple(WEEKDAY_TO_MASK))],
         vol.Optional(ATTR_REPEAT): vol.All(vol.Coerce(int), vol.Range(min=0)),
         vol.Optional(ATTR_ENABLED, default=True): cv.boolean,
+        vol.Optional(ATTR_LOCATION): vol.Schema(
+            {
+                vol.Required("latitude"): vol.Coerce(float),
+                vol.Required("longitude"): vol.Coerce(float),
+                vol.Optional("radius"): vol.Coerce(float),
+            }
+        ),
         vol.Optional(ATTR_LATITUDE): cv.string,
         vol.Optional(ATTR_LONGITUDE): cv.string,
     }
@@ -112,6 +120,13 @@ _UPDATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
         vol.Optional(ATTR_REPEAT): vol.All(vol.Coerce(int), vol.Range(min=0)),
         vol.Optional(ATTR_ENABLED): cv.boolean,
         vol.Optional(ATTR_CLEAR_LOCATION): cv.boolean,
+        vol.Optional(ATTR_LOCATION): vol.Schema(
+            {
+                vol.Required("latitude"): vol.Coerce(float),
+                vol.Required("longitude"): vol.Coerce(float),
+                vol.Optional("radius"): vol.Coerce(float),
+            }
+        ),
         vol.Optional(ATTR_LATITUDE): vol.Any(cv.string, None),
         vol.Optional(ATTR_LONGITUDE): vol.Any(cv.string, None),
     }
@@ -197,6 +212,112 @@ def _raise_timer_index_error(timer_index: int, timer_count: int, *, scope: str) 
     )
 
 
+def _normalize_geo_value(value: Any) -> str | None:
+    """Normalize user-provided geo values."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        normalized = value.strip()
+        if normalized.lower() in {"", "null", "none", "nan"}:
+            return None
+        return normalized
+    return str(value)
+
+
+def _parse_clock_time(value: Any) -> time:
+    """Parse selector value to clock time."""
+    if isinstance(value, time):
+        return value
+    if not isinstance(value, str):
+        raise HomeAssistantError("start_time must be provided as HH:MM")
+
+    candidate = value.strip()
+    for fmt in ("%H:%M", "%H:%M:%S"):
+        try:
+            return datetime.strptime(candidate, fmt).time()
+        except ValueError:
+            continue
+    raise HomeAssistantError("start_time must be provided as HH:MM")
+
+
+def _start_minutes_from_local_time(hass: HomeAssistant, value: Any) -> int:
+    """Convert local clock time to UTC minutes after midnight."""
+    tz = dt_util.get_time_zone(hass.config.time_zone) or UTC
+    clock = _parse_clock_time(value)
+    now_local = datetime.now(tz)
+    local_dt = datetime(
+        now_local.year,
+        now_local.month,
+        now_local.day,
+        clock.hour,
+        clock.minute,
+        tzinfo=tz,
+    )
+    utc_dt = local_dt.astimezone(UTC)
+    return utc_dt.hour * 60 + utc_dt.minute
+
+
+def _repeat_mask_from_days(days: Any) -> int:
+    """Build repeat bitmask from weekday names."""
+    if not isinstance(days, list):
+        raise HomeAssistantError("repeat_days must be a list")
+    mask = 0
+    for day in days:
+        if not isinstance(day, str):
+            raise HomeAssistantError("repeat_days must contain weekday strings")
+        key = day.strip().lower()
+        if key not in WEEKDAY_TO_MASK:
+            raise HomeAssistantError(f"Unsupported weekday '{day}'")
+        mask |= WEEKDAY_TO_MASK[key]
+    return mask
+
+
+def _resolve_location_values(
+    data: dict[str, Any],
+    existing: Any | None,
+    clear_location: bool,
+) -> tuple[str | None, str | None]:
+    """Resolve location values from selector/legacy fields/update flags."""
+    location_data = data.get(ATTR_LOCATION)
+    if location_data is not None and not isinstance(location_data, dict):
+        raise HomeAssistantError("location must be a map value")
+
+    latitude = (
+        _normalize_geo_value(data.get(ATTR_LATITUDE))
+        if ATTR_LATITUDE in data
+        else _normalize_geo_value(getattr(existing, "latitude", None))
+    )
+    longitude = (
+        _normalize_geo_value(data.get(ATTR_LONGITUDE))
+        if ATTR_LONGITUDE in data
+        else _normalize_geo_value(getattr(existing, "longitude", None))
+    )
+
+    if location_data is not None:
+        if ATTR_LATITUDE in data or ATTR_LONGITUDE in data:
+            raise HomeAssistantError(
+                "location cannot be used together with latitude/longitude"
+            )
+        latitude = _normalize_geo_value(location_data.get("latitude"))
+        longitude = _normalize_geo_value(location_data.get("longitude"))
+
+    if clear_location and (ATTR_LATITUDE in data or ATTR_LONGITUDE in data):
+        raise HomeAssistantError(
+            "clear_location cannot be used together with latitude/longitude"
+        )
+    if clear_location and location_data is not None:
+        raise HomeAssistantError("clear_location cannot be used together with location")
+    if clear_location:
+        return None, None
+
+    if (latitude is None) != (longitude is None):
+        raise HomeAssistantError(
+            "latitude and longitude must both be provided or both be omitted"
+        )
+
+    return latitude, longitude
+
+
 def _coerce_timer(
     data: dict[str, Any],
     *,
@@ -204,67 +325,11 @@ def _coerce_timer(
     hass: HomeAssistant | None = None,
 ) -> SimpleTimer:
     """Build a SimpleTimer from service data, optionally patching an existing timer."""
-    def _normalize_geo(value: Any) -> str | None:
-        """Normalize user-provided geo values."""
-        if value is None:
-            return None
-        if isinstance(value, str):
-            normalized = value.strip()
-            if normalized.lower() in {"", "null", "none", "nan"}:
-                return None
-            return normalized
-        return str(value)
-
-    def _parse_clock_time(value: Any) -> time:
-        """Parse selector value to clock time."""
-        if isinstance(value, time):
-            return value
-        if not isinstance(value, str):
-            raise HomeAssistantError("start_time must be provided as HH:MM")
-
-        candidate = value.strip()
-        for fmt in ("%H:%M", "%H:%M:%S"):
-            try:
-                return datetime.strptime(candidate, fmt).time()
-            except ValueError:
-                continue
-        raise HomeAssistantError("start_time must be provided as HH:MM")
-
-    def _start_minutes_from_local_time(value: Any) -> int:
-        """Convert local clock time to UTC minutes after midnight."""
-        if hass is None:
-            raise HomeAssistantError("hass context is required for start_time conversion")
-        tz = dt_util.get_time_zone(hass.config.time_zone) or UTC
-        clock = _parse_clock_time(value)
-        now_local = datetime.now(tz)
-        local_dt = datetime(
-            now_local.year,
-            now_local.month,
-            now_local.day,
-            clock.hour,
-            clock.minute,
-            tzinfo=tz,
-        )
-        utc_dt = local_dt.astimezone(UTC)
-        return utc_dt.hour * 60 + utc_dt.minute
-
-    def _repeat_mask_from_days(days: Any) -> int:
-        """Build repeat bitmask from weekday names."""
-        if not isinstance(days, list):
-            raise HomeAssistantError("repeat_days must be a list")
-        mask = 0
-        for day in days:
-            if not isinstance(day, str):
-                raise HomeAssistantError("repeat_days must contain weekday strings")
-            key = day.strip().lower()
-            if key not in WEEKDAY_TO_MASK:
-                raise HomeAssistantError(f"Unsupported weekday '{day}'")
-            mask |= WEEKDAY_TO_MASK[key]
-        return mask
-
     start = data.get(ATTR_START, getattr(existing, "start", None))
     if ATTR_START_TIME in data:
-        start = _start_minutes_from_local_time(data.get(ATTR_START_TIME))
+        if hass is None:
+            raise HomeAssistantError("hass context is required for start_time conversion")
+        start = _start_minutes_from_local_time(hass, data.get(ATTR_START_TIME))
 
     duration = data.get(ATTR_DURATION, getattr(existing, "duration", None))
     if ATTR_DURATION_MINUTES in data:
@@ -275,29 +340,7 @@ def _coerce_timer(
         repeat = _repeat_mask_from_days(data[ATTR_REPEAT_DAYS])
     enabled = data.get(ATTR_ENABLED, getattr(existing, "enabled", True))
     clear_location = bool(data.get(ATTR_CLEAR_LOCATION, False))
-
-    latitude = (
-        _normalize_geo(data.get(ATTR_LATITUDE))
-        if ATTR_LATITUDE in data
-        else _normalize_geo(getattr(existing, "latitude", None))
-    )
-    longitude = (
-        _normalize_geo(data.get(ATTR_LONGITUDE))
-        if ATTR_LONGITUDE in data
-        else _normalize_geo(getattr(existing, "longitude", None))
-    )
-    if clear_location and (ATTR_LATITUDE in data or ATTR_LONGITUDE in data):
-        raise HomeAssistantError(
-            "clear_location cannot be used together with latitude/longitude"
-        )
-    if clear_location:
-        latitude = None
-        longitude = None
-
-    if (latitude is None) != (longitude is None):
-        raise HomeAssistantError(
-            "latitude and longitude must both be provided or both be omitted"
-        )
+    latitude, longitude = _resolve_location_values(data, existing, clear_location)
 
     if start is None or duration is None or repeat is None:
         raise HomeAssistantError("start, duration and repeat are required")

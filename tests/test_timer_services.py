@@ -293,6 +293,41 @@ def test_coerce_timer_rejects_clear_location_together_with_lat_lon() -> None:
         )
 
 
+def test_coerce_timer_accepts_location_map_selector_payload() -> None:
+    """Location selector payload should map to timer latitude/longitude."""
+    hass = SimpleNamespace(config=SimpleNamespace(time_zone="UTC"))
+
+    timer = _coerce_timer(
+        {
+            "start_time": "10:15",
+            "duration_minutes": 45,
+            "repeat_days": ["monday"],
+            "location": {"latitude": 56.123, "longitude": 10.456},
+        },
+        hass=hass,
+    )
+
+    assert timer.latitude == "56.123"
+    assert timer.longitude == "10.456"
+
+
+def test_coerce_timer_rejects_clear_location_together_with_location() -> None:
+    """clear_location cannot be combined with location selector payload."""
+    hass = SimpleNamespace(config=SimpleNamespace(time_zone="UTC"))
+
+    with pytest.raises(HomeAssistantError):
+        _coerce_timer(
+            {
+                "start_time": "10:15",
+                "duration_minutes": 45,
+                "repeat_days": ["monday"],
+                "clear_location": True,
+                "location": {"latitude": 56.123, "longitude": 10.456},
+            },
+            hass=hass,
+        )
+
+
 def test_coerce_timer_supports_start_time_and_duration_minutes() -> None:
     """Clock-based start and minute duration should map to API units."""
     hass = SimpleNamespace(config=SimpleNamespace(time_zone="UTC"))
