@@ -101,7 +101,7 @@ async def test_async_update_timer_replaces_selected_index() -> None:
 
 @pytest.mark.asyncio
 async def test_async_update_timer_without_line_uses_combined_index() -> None:
-    """Update without line should resolve index across heater+ventilation timers."""
+    """Update without line should resolve index across available timers."""
     coordinator = _CoordinatorStub([])
     coordinator.cloud.get_timers = AsyncMock(
         side_effect=[
@@ -188,7 +188,7 @@ async def test_async_update_timer_without_line_invalid_index_has_friendly_error(
         )
 
     message = str(exc_info.value)
-    assert "heater first, then ventilation" in message
+    assert "edit timer index" in message
     assert "Valid range is 0..0" in message
 
 

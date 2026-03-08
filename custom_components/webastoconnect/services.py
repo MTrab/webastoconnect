@@ -360,7 +360,7 @@ async def async_update_timer(
             _raise_timer_index_error(
                 timer_index,
                 total_timers,
-                scope="edit timer index (heater first, then ventilation)",
+                scope="edit timer index",
             )
 
         timers[selected_index] = _coerce_timer(
@@ -385,11 +385,7 @@ async def async_delete_timer(
         output = _active_output_for_device(device)
         timers = await coordinator.cloud.get_timers(device=device, line=output)
         if timer_index >= len(timers):
-            active_scope = (
-                "active ventilation timers"
-                if output == Outputs.VENTILATION
-                else "active heater timers"
-            )
+            active_scope = "active output timers"
             _raise_timer_index_error(timer_index, len(timers), scope=active_scope)
         del timers[timer_index]
         await coordinator.cloud.save_timers(device=device, timers=timers, line=output)

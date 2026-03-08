@@ -81,7 +81,7 @@ update_timer:
           integration: webastoconnect
     timer_index:
       name: Timer index
-      description: Zero-based index across timers (heater first, then ventilation).
+      description: Zero-based timer index.
       required: true
       selector:
         number:
