@@ -245,6 +245,54 @@ async def test_async_update_timer_clears_location_from_null_values() -> None:
     assert saved[0].longitude is None
 
 
+@pytest.mark.asyncio
+async def test_async_update_timer_clears_location_from_checkbox() -> None:
+    """Update should remove location when clear_location is set."""
+    coordinator = _CoordinatorStub(
+        [
+            SimpleTimer(
+                start=600,
+                duration=1800,
+                repeat=64,
+                enabled=True,
+                latitude="56.1",
+                longitude="10.2",
+            )
+        ]
+    )
+    device = SimpleNamespace(device_id="dev1")
+
+    await async_update_timer(
+        coordinator,
+        device,
+        timer_index=0,
+        timer_data={"clear_location": True},
+        line=LINE_VENTILATION,
+    )
+
+    saved = coordinator.cloud.save_timers.await_args.kwargs["timers"]
+    assert saved[0].latitude is None
+    assert saved[0].longitude is None
+
+
+def test_coerce_timer_rejects_clear_location_together_with_lat_lon() -> None:
+    """clear_location cannot be used together with latitude/longitude."""
+    hass = SimpleNamespace(config=SimpleNamespace(time_zone="UTC"))
+
+    with pytest.raises(HomeAssistantError):
+        _coerce_timer(
+            {
+                "start_time": "10:15",
+                "duration_minutes": 45,
+                "repeat_days": ["monday"],
+                "clear_location": True,
+                "latitude": "56.1",
+                "longitude": "10.2",
+            },
+            hass=hass,
+        )
+
+
 def test_coerce_timer_supports_start_time_and_duration_minutes() -> None:
     """Clock-based start and minute duration should map to API units."""
     hass = SimpleNamespace(config=SimpleNamespace(time_zone="UTC"))

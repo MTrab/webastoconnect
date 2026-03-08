@@ -64,6 +64,7 @@ ATTR_REPEAT_DAYS = "repeat_days"
 ATTR_ENABLED = "enabled"
 ATTR_LATITUDE = "latitude"
 ATTR_LONGITUDE = "longitude"
+ATTR_CLEAR_LOCATION = "clear_location"
 ATTR_LINE = "line"
 LINE_HEATER = "heater"
 LINE_VENTILATION = "ventilation"
@@ -110,6 +111,7 @@ _UPDATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
         vol.Optional(ATTR_REPEAT_DAYS): [vol.In(tuple(WEEKDAY_TO_MASK))],
         vol.Optional(ATTR_REPEAT): vol.All(vol.Coerce(int), vol.Range(min=0)),
         vol.Optional(ATTR_ENABLED): cv.boolean,
+        vol.Optional(ATTR_CLEAR_LOCATION): cv.boolean,
         vol.Optional(ATTR_LATITUDE): vol.Any(cv.string, None),
         vol.Optional(ATTR_LONGITUDE): vol.Any(cv.string, None),
     }
@@ -272,6 +274,7 @@ def _coerce_timer(
     if ATTR_REPEAT_DAYS in data:
         repeat = _repeat_mask_from_days(data[ATTR_REPEAT_DAYS])
     enabled = data.get(ATTR_ENABLED, getattr(existing, "enabled", True))
+    clear_location = bool(data.get(ATTR_CLEAR_LOCATION, False))
 
     latitude = (
         _normalize_geo(data.get(ATTR_LATITUDE))
@@ -283,6 +286,14 @@ def _coerce_timer(
         if ATTR_LONGITUDE in data
         else _normalize_geo(getattr(existing, "longitude", None))
     )
+    if clear_location and (ATTR_LATITUDE in data or ATTR_LONGITUDE in data):
+        raise HomeAssistantError(
+            "clear_location cannot be used together with latitude/longitude"
+        )
+    if clear_location:
+        latitude = None
+        longitude = None
+
     if (latitude is None) != (longitude is None):
         raise HomeAssistantError(
             "latitude and longitude must both be provided or both be omitted"

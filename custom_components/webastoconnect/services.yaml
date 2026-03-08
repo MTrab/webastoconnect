@@ -130,6 +130,12 @@ update_timer:
       required: false
       selector:
         boolean:
+    clear_location:
+      name: Clear location
+      description: Remove stored timer location.
+      required: false
+      selector:
+        boolean:
     latitude:
       name: Latitude
       description: Optional latitude. If set, longitude must also be set.
