@@ -176,7 +176,23 @@ def _output_for_line(line: str) -> Any:
 
 def _active_output_for_device(device: Any) -> Any:
     """Resolve active output line from current device mode."""
-    return Outputs.VENTILATION if bool(getattr(device, "is_ventilation", False)) else Outputs.HEATER
+    return (
+        Outputs.VENTILATION
+        if bool(getattr(device, "is_ventilation", False))
+        else Outputs.HEATER
+    )
+
+
+def _raise_timer_index_error(timer_index: int, timer_count: int, *, scope: str) -> None:
+    """Raise a user-friendly out-of-range error for timer index."""
+    if timer_count <= 0:
+        raise HomeAssistantError(f"No timers available for {scope}.")
+
+    max_index = timer_count - 1
+    raise HomeAssistantError(
+        f"Invalid timer index {timer_index} for {scope}. "
+        f"Valid range is 0..{max_index} ({timer_count} timer(s))."
+    )
 
 
 def _coerce_timer(
@@ -341,8 +357,10 @@ async def async_update_timer(
                 total_timers = len(timers)
 
         if selected_index >= len(timers):
-            raise HomeAssistantError(
-                f"timer_index '{timer_index}' out of range (timers: {total_timers})"
+            _raise_timer_index_error(
+                timer_index,
+                total_timers,
+                scope="heater+ventilation timers",
             )
 
         timers[selected_index] = _coerce_timer(
@@ -367,9 +385,12 @@ async def async_delete_timer(
         output = _active_output_for_device(device)
         timers = await coordinator.cloud.get_timers(device=device, line=output)
         if timer_index >= len(timers):
-            raise HomeAssistantError(
-                f"timer_index '{timer_index}' out of range (timers: {len(timers)})"
+            active_scope = (
+                "active ventilation timers"
+                if output == Outputs.VENTILATION
+                else "active heater timers"
             )
+            _raise_timer_index_error(timer_index, len(timers), scope=active_scope)
         del timers[timer_index]
         await coordinator.cloud.save_timers(device=device, timers=timers, line=output)
 
