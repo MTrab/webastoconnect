@@ -27,6 +27,7 @@ class WebastoConnectCard extends HTMLElement {
     this._config = {
       connected_entity: config?.connected_entity,
       ventilation_mode_entity: config?.ventilation_mode_entity,
+      next_timer_entity: config?.next_timer_entity,
       end_time_entity: config?.end_time_entity,
       ...config,
     };
@@ -149,6 +150,14 @@ class WebastoConnectCard extends HTMLElement {
           (entry) =>
             entry.entity_id?.startsWith("binary_sensor.") &&
             entry.original_name === "Connected"
+        ),
+      next_timer_entity:
+        overrides.next_timer_entity ||
+        this._pickEntry(
+          entries,
+          (entry) =>
+            entry.entity_id?.startsWith("sensor.") &&
+            entry.original_name === "Next start"
         ),
       location_entity:
         overrides.location_entity ||
@@ -286,6 +295,16 @@ class WebastoConnectCard extends HTMLElement {
     this._render();
   }
 
+  _openTimersPopup() {
+    this._timersPopupOpen = true;
+    this._render();
+  }
+
+  _closeTimersPopup() {
+    this._timersPopupOpen = false;
+    this._render();
+  }
+
   _resolveMode(ventilationEntity) {
     if (!ventilationEntity) {
       return null;
@@ -349,6 +368,61 @@ class WebastoConnectCard extends HTMLElement {
     this._closeModePopup();
   }
 
+  _timerItems(entity) {
+    const timers = entity?.attributes?.timers;
+    if (!Array.isArray(timers)) {
+      return [];
+    }
+
+    return timers
+      .filter((timer) => timer && typeof timer === "object")
+      .map((timer, index) => ({
+        ...timer,
+        index,
+        line_code: timer.line_code || timer.line || "OUTH",
+      }));
+  }
+
+  _activeLine(ventilationMode) {
+    return this._resolveMode(ventilationMode) === "ventilation" ? "OUTV" : "OUTH";
+  }
+
+  _formatTimerRepeat(timer) {
+    if (!timer.repeat) {
+      return localize(this._hass, "card.ui.timer_once");
+    }
+    return localize(this._hass, "card.ui.timer_repeating");
+  }
+
+  _canManageTimers(deviceId, isConnected) {
+    return Boolean(deviceId) && isConnected;
+  }
+
+  _toggleTimerEnabled(timer) {
+    const deviceId = this._config?.device_id;
+    if (!this._hass || !deviceId) {
+      return;
+    }
+
+    this._hass.callService("webastoconnect", "update_timer", {
+      device_id: deviceId,
+      timer_index: timer.index,
+      enabled: !timer.enabled,
+    });
+  }
+
+  _deleteTimer(timer) {
+    const deviceId = this._config?.device_id;
+    if (!this._hass || !deviceId) {
+      return;
+    }
+
+    this._hass.callService("webastoconnect", "delete_timer", {
+      device_id: deviceId,
+      timer_index: timer.index,
+    });
+  }
+
   async _renderMapPopup(entityId) {
     const host = this.shadowRoot?.getElementById("map-card-host");
     if (!host || !this._hass || !entityId) {
@@ -390,7 +464,12 @@ class WebastoConnectCard extends HTMLElement {
     const location = this._getState(entities.location_entity);
     const ventilationMode = this._getState(entities.ventilation_mode_entity);
     const connected = this._getState(entities.connected_entity);
+    const nextTimer = this._getState(entities.next_timer_entity);
     const isConnected = this._isConnected(connected);
+    const activeLine = this._activeLine(ventilationMode);
+    const timers = this._timerItems(nextTimer).filter(
+      (timer) => timer.line_code === activeLine
+    );
 
     const isMainAvailable = Boolean(main);
     const isOn = isMainAvailable && main.state === "on";
@@ -433,6 +512,12 @@ class WebastoConnectCard extends HTMLElement {
     const mapTabIndex = mapEnabled ? "0" : "-1";
     const mapAriaDisabled = mapEnabled ? "false" : "true";
     const mapPopup = this._mapPopupOpen && mapEnabled;
+    const timersEnabled = Boolean(entities.next_timer_entity);
+    const timersClass = timersEnabled ? "timers-enabled" : "timers-disabled";
+    const timersTabIndex = timersEnabled ? "0" : "-1";
+    const timersAriaDisabled = timersEnabled ? "false" : "true";
+    const timersPopup = this._timersPopupOpen && timersEnabled;
+    const canManageTimers = this._canManageTimers(this._config?.device_id, isConnected);
     const closeText = localize(this._hass, "card.ui.close");
 
     this.shadowRoot.innerHTML = `
@@ -482,8 +567,14 @@ class WebastoConnectCard extends HTMLElement {
         .q.map-enabled {
           cursor: pointer;
         }
+        .q.timers-enabled {
+          cursor: pointer;
+        }
         .q.mode-enabled {
           cursor: pointer;
+        }
+        .q.timers-enabled:hover {
+          background: #aebbd3;
         }
         .q.mode-enabled:hover {
           background: #aebbd3;
@@ -491,7 +582,7 @@ class WebastoConnectCard extends HTMLElement {
         .q.map-enabled:hover {
           background: #aebbd3;
         }
-        .q.map-disabled, .q.mode-disabled {
+        .q.map-disabled, .q.mode-disabled, .q.timers-disabled {
           opacity: 0.6;
         }
         .q-label {
@@ -705,6 +796,71 @@ class WebastoConnectCard extends HTMLElement {
           font: inherit;
           font-weight: 500;
         }
+        .timers-modal-body {
+          padding: 12px 18px 18px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .timers-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .timer-row {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 12px;
+          align-items: center;
+          border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
+          border-radius: 18px;
+          background: var(--secondary-background-color, #eee);
+          padding: 12px 14px;
+        }
+        .timer-main {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          min-width: 0;
+        }
+        .timer-title {
+          color: var(--primary-text-color, #111);
+          font-size: 18px;
+          font-weight: 500;
+        }
+        .timer-meta {
+          color: var(--secondary-text-color, #666);
+          font-size: 14px;
+        }
+        .timer-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .timer-delete {
+          border: 0;
+          border-radius: 10px;
+          padding: 8px 10px;
+          background: var(--secondary-background-color, #eee);
+          color: var(--primary-text-color, #111);
+          cursor: pointer;
+          font: inherit;
+        }
+        .timer-delete[disabled] {
+          opacity: 0.45;
+          cursor: default;
+        }
+        .timers-empty {
+          color: var(--secondary-text-color, #666);
+          font-size: 14px;
+          text-align: center;
+          padding: 18px 8px 8px;
+        }
+        .timers-note {
+          color: var(--secondary-text-color, #666);
+          font-size: 13px;
+          text-align: center;
+        }
         .map-card-host {
           height: 360px;
           background: var(--card-background-color, #fff);
@@ -730,7 +886,7 @@ class WebastoConnectCard extends HTMLElement {
           <div class="q tr ${modeClass}" id="mode-action" role="button" tabindex="${modeTabIndex}" aria-disabled="${modeAriaDisabled}">
             <span class="q-label">${titleMode}</span>
           </div>
-          <div class="q bl">${titleTimers}</div>
+          <div class="q bl ${timersClass}" id="timers-action" role="button" tabindex="${timersTabIndex}" aria-disabled="${timersAriaDisabled}">${titleTimers}</div>
           <div class="q br ${mapClass}" id="map-action" role="button" tabindex="${mapTabIndex}" aria-disabled="${mapAriaDisabled}">${titleMap}</div>
           <div class="divider-v"></div>
           <div class="divider-h"></div>
@@ -779,6 +935,35 @@ class WebastoConnectCard extends HTMLElement {
         </div>
       </div>
       ` : ""}
+      ${timersPopup ? `
+      <div class="modal-backdrop" id="timers-modal-backdrop">
+        <div class="modal-shell" role="dialog" aria-modal="true" aria-label="${titleTimers}">
+          <div class="modal-header">
+            <span>${titleTimers}</span>
+            <button class="modal-close" id="timers-modal-close">${closeText}</button>
+          </div>
+          <div class="timers-modal-body">
+            ${timers.length ? `
+            <div class="timers-list">
+              ${timers.map((timer) => `
+              <div class="timer-row">
+                <div class="timer-main">
+                  <div class="timer-title">${escapeAttr(timer.start_hhmm_utc || "--:--")}</div>
+                  <div class="timer-meta">${escapeAttr(this._formatTimerRepeat(timer))} · ${timer.enabled ? escapeAttr(localize(this._hass, "card.ui.timer_enabled")) : escapeAttr(localize(this._hass, "card.ui.timer_disabled"))}</div>
+                </div>
+                <div class="timer-actions">
+                  <ha-switch class="timer-toggle" data-timer-index="${timer.index}" ${timer.enabled ? "checked" : ""} ${canManageTimers ? "" : "disabled"}></ha-switch>
+                  <button class="timer-delete" data-delete-index="${timer.index}" ${canManageTimers ? "" : "disabled"}>${escapeAttr(localize(this._hass, "card.ui.delete"))}</button>
+                </div>
+              </div>
+              `).join("")}
+            </div>
+            ` : `<div class="timers-empty">${escapeAttr(localize(this._hass, "card.ui.timers_empty"))}</div>`}
+            <div class="timers-note">${escapeAttr(canManageTimers ? localize(this._hass, "card.ui.timers_manage_note") : localize(this._hass, "card.ui.timers_readonly_note"))}</div>
+          </div>
+        </div>
+      </div>
+      ` : ""}
       ${mapPopup ? `
       <div class="modal-backdrop" id="map-modal-backdrop">
         <div class="modal-shell" role="dialog" aria-modal="true" aria-label="${titleMap}">
@@ -810,6 +995,17 @@ class WebastoConnectCard extends HTMLElement {
         if (ev.key === "Enter" || ev.key === " ") {
           ev.preventDefault();
           this._openModePopup();
+        }
+      };
+    }
+
+    const timersAction = this.shadowRoot.getElementById("timers-action");
+    if (timersAction && timersEnabled) {
+      timersAction.onclick = () => this._openTimersPopup();
+      timersAction.onkeydown = (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          this._openTimersPopup();
         }
       };
     }
@@ -872,6 +1068,42 @@ class WebastoConnectCard extends HTMLElement {
           }
         };
       }
+    }
+
+    if (timersPopup) {
+      const close = this.shadowRoot.getElementById("timers-modal-close");
+      if (close) {
+        close.onclick = () => this._closeTimersPopup();
+      }
+
+      const backdrop = this.shadowRoot.getElementById("timers-modal-backdrop");
+      if (backdrop) {
+        backdrop.onclick = (ev) => {
+          if (ev.target === backdrop) {
+            this._closeTimersPopup();
+          }
+        };
+      }
+
+      this.shadowRoot.querySelectorAll(".timer-toggle").forEach((toggle) => {
+        toggle.addEventListener("change", (ev) => {
+          const index = Number(ev.currentTarget?.dataset?.timerIndex);
+          const timer = timers.find((item) => item.index === index);
+          if (timer) {
+            this._toggleTimerEnabled(timer);
+          }
+        });
+      });
+
+      this.shadowRoot.querySelectorAll(".timer-delete").forEach((button) => {
+        button.addEventListener("click", (ev) => {
+          const index = Number(ev.currentTarget?.dataset?.deleteIndex);
+          const timer = timers.find((item) => item.index === index);
+          if (timer) {
+            this._deleteTimer(timer);
+          }
+        });
+      });
     }
   }
 
@@ -1035,6 +1267,9 @@ class WebastoConnectCardEditor extends HTMLElement {
         </label>
         <label>Connected entity
           <input data-field="connected_entity" list="webasto-options-binary-sensor" value="${escapeAttr(cfg.connected_entity)}" placeholder="binary_sensor.webasto_connected" />
+        </label>
+        <label>Timer sensor entity
+          <input data-field="next_timer_entity" list="webasto-options-sensor" value="${escapeAttr(cfg.next_timer_entity)}" placeholder="sensor.webasto_next_start" />
         </label>
         <label>End-time sensor entity
           <input data-field="end_time_entity" list="webasto-options-sensor" value="${escapeAttr(cfg.end_time_entity)}" placeholder="sensor.webasto_main_output_end_time" />

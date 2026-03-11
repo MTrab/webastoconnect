@@ -17,9 +17,17 @@
       "main_output_missing": "Vælg en Webasto-enhed eller main output entity i kortindstillinger",
       "output": "Output",
       "toggle_output": "Skift output",
+      "delete": "Slet",
       "save": "Gem",
       "close": "Luk",
-      "map_unavailable": "Lokation er ikke tilgængelig"
+      "map_unavailable": "Lokation er ikke tilgængelig",
+      "timers_empty": "Ingen timere konfigureret",
+      "timer_enabled": "Aktiv",
+      "timer_disabled": "Deaktiveret",
+      "timer_once": "Kun én gang",
+      "timer_repeating": "Gentages",
+      "timers_manage_note": "Timere vist her tilhører kun det aktive output.",
+      "timers_readonly_note": "Timerstyring kræver en connected enhed og en valgt Webasto-enhed."
     }
   }
 }

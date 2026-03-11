@@ -17,9 +17,17 @@
       "main_output_missing": "Select a Webasto device or main output entity in card settings",
       "output": "Output",
       "toggle_output": "Toggle output",
+      "delete": "Delete",
       "save": "Save",
       "close": "Close",
-      "map_unavailable": "Location is unavailable"
+      "map_unavailable": "Location is unavailable",
+      "timers_empty": "No timers configured",
+      "timer_enabled": "Enabled",
+      "timer_disabled": "Disabled",
+      "timer_once": "One time",
+      "timer_repeating": "Repeating",
+      "timers_manage_note": "Timers shown here belong to the active output only.",
+      "timers_readonly_note": "Timer management requires a connected device and a selected Webasto device."
     }
   }
 }
