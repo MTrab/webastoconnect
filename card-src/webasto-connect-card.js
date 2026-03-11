@@ -592,7 +592,7 @@ class WebastoConnectCard extends HTMLElement {
         }
         .mode-modal {
           width: min(420px, 100%);
-          background: #f7f8fb;
+          background: var(--card-background-color, #fff);
           border-radius: 28px;
           overflow: hidden;
           box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
@@ -602,7 +602,7 @@ class WebastoConnectCard extends HTMLElement {
           justify-content: space-between;
           align-items: center;
           padding: 16px 18px 0;
-          color: #20334d;
+          color: var(--primary-text-color, #111);
           font-size: 16px;
         }
         .mode-modal-body {
@@ -615,10 +615,10 @@ class WebastoConnectCard extends HTMLElement {
           margin-top: 8px;
         }
         .mode-option {
-          border: 0;
+          border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
           border-radius: 24px;
-          background: #d5dcea;
-          color: #29456f;
+          background: var(--secondary-background-color, #eee);
+          color: var(--primary-text-color, #111);
           padding: 18px 14px;
           min-height: 148px;
           text-align: left;
@@ -633,8 +633,9 @@ class WebastoConnectCard extends HTMLElement {
           transform: translateY(-1px);
         }
         .mode-option.selected {
-          background: #7ea2da;
-          color: #17345c;
+          background: var(--primary-color, #03a9f4);
+          color: var(--text-primary-color, #fff);
+          border-color: var(--primary-color, #03a9f4);
         }
         .mode-option-title {
           font-size: 18px;
@@ -653,8 +654,8 @@ class WebastoConnectCard extends HTMLElement {
           border-radius: 14px;
           min-width: 88px;
           padding: 12px 20px;
-          background: #d5dcea;
-          color: #20334d;
+          background: var(--secondary-background-color, #eee);
+          color: var(--primary-text-color, #111);
           cursor: pointer;
           font: inherit;
           font-weight: 500;
