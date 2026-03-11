@@ -507,7 +507,7 @@ class WebastoConnectCard extends HTMLElement {
     const modePopup = this._modePopupOpen && modeEnabled;
     const selectedMode = this._modeDraft || this._resolveMode(ventilationMode) || "heating";
     const saveText = localize(this._hass, "card.ui.save");
-    const mapEnabled = isConnected && this._isMapEnabled(entities.location_entity, location);
+    const mapEnabled = this._isMapEnabled(entities.location_entity, location);
     const mapClass = mapEnabled ? "map-enabled" : "map-disabled";
     const mapTabIndex = mapEnabled ? "0" : "-1";
     const mapAriaDisabled = mapEnabled ? "false" : "true";
