@@ -1,0 +1,43 @@
+{
+    "title": "Webasto Connect (ThermoConnect)",
+    "config": {
+        "abort": {
+            "already_configured": "Tento účet je již nakonfigurován",
+            "reauth_successful": "Opětovné ověření proběhlo úspěšně"
+        },
+        "error": {
+            "cannot_connect": "Nelze se připojit",
+            "invalid_auth": "Neplatné přihlašovací údaje"
+        },
+        "step": {
+            "reauth_confirm": {
+                "description": "Pro pokračování se znovu přihlaste ke svému účtu Webasto Connect.",
+                "title": "Znovu ověřit účet Webasto Connect",
+                "data": {
+                    "email": "E-mail",
+                    "password": "Heslo"
+                }
+            },
+            "user": {
+                "data": {
+                    "email": "E-mail",
+                    "password": "Heslo"
+                }
+            }
+        }
+    },
+    "options": {
+        "error": {
+            "cannot_connect": "Nelze se připojit",
+            "invalid_auth": "Neplatné přihlašovací údaje"
+        },
+        "step": {
+            "init": {
+                "data": {
+                    "email": "E-mail",
+                    "password": "Heslo"
+                }
+            }
+        }
+    }
+}
