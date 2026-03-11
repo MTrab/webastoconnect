@@ -118,3 +118,13 @@ class WebastoBaseEntity(CoordinatorEntity[DataUpdateCoordinator[None]]):
             "sw_version": settings.get("sw_version", "Unknown"),
             "configuration_url": "https://my.webastoconnect.com",
         }
+
+    @property
+    def _device(self) -> WebastoDevice:
+        """Return the current device model for this entity."""
+        return self._cloud.devices[self._device_id]
+
+    @property
+    def _is_device_connected(self) -> bool:
+        """Return False only when the device is explicitly disconnected."""
+        return getattr(self._device, "is_connected", True) is not False
