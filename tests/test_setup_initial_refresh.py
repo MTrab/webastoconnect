@@ -12,7 +12,7 @@ import custom_components.webastoconnect as integration
 def _mock_hass_for_setup() -> SimpleNamespace:
     """Build a minimal hass mock compatible with integration._async_setup."""
     return SimpleNamespace(
-        async_add_executor_job=AsyncMock(return_value=(False, None)),
+        async_add_executor_job=AsyncMock(return_value=(False, None, None)),
         config=SimpleNamespace(path=lambda *_args, **_kwargs: "/tmp"),
         data={},
     )

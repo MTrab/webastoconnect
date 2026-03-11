@@ -118,7 +118,7 @@ async def _async_setup(
         "Checking Webasto Connect Card installation status for /local/webastoconnect/%s",
         CARD_FILENAME,
     )
-    installed, card_version = await hass.async_add_executor_job(
+    installed, card_version, card_hash = await hass.async_add_executor_job(
         ensure_card_installed,
         Path(integration.file_path),
         Path(hass.config.path("www")),
@@ -139,7 +139,7 @@ async def _async_setup(
             card_version,
             CARD_FILENAME,
         )
-    await _async_ensure_lovelace_card_resource(hass, card_version)
+    await _async_ensure_lovelace_card_resource(hass, card_hash)
 
     coordinator = WebastoConnectUpdateCoordinator(hass, entry)
     try:
@@ -168,13 +168,13 @@ async def _async_setup(
 
 
 async def _async_ensure_lovelace_card_resource(
-    hass: HomeAssistant, card_version: str | None
+    hass: HomeAssistant, card_hash: str | None
 ) -> None:
     """Ensure the Webasto Connect card resource exists in Lovelace storage mode."""
     resource_base_url = f"/local/{CARD_WWW_SUBDIR}/{CARD_FILENAME}"
     resource_url = (
-        f"{resource_base_url}?v={card_version}"
-        if card_version
+        f"{resource_base_url}?v={card_hash}"
+        if card_hash
         else resource_base_url
     )
 
@@ -200,7 +200,7 @@ async def _async_ensure_lovelace_card_resource(
             continue
 
         update_data: dict[str, str] = {}
-        if existing_url != resource_url:
+        if resource.get(CONF_URL) != resource_url:
             update_data[CONF_URL] = resource_url
         if resource.get(CONF_TYPE) != "module":
             update_data[CONF_RESOURCE_TYPE_WS] = "module"

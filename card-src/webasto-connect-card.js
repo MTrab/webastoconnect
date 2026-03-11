@@ -8,6 +8,10 @@ function escapeAttr(value) {
     .replaceAll(">", "&gt;");
 }
 
+function entityDeviceClass(entry) {
+  return entry?.device_class || entry?.original_device_class || null;
+}
+
 class WebastoConnectCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement("webasto-connect-card-editor");
@@ -114,7 +118,7 @@ class WebastoConnectCard extends HTMLElement {
           entries,
           (entry) =>
             entry.entity_id?.startsWith("sensor.") &&
-            entry.device_class === "timestamp" &&
+            entityDeviceClass(entry) === "timestamp" &&
             entry.original_name !== "Next start"
         ),
       temperature_entity:
@@ -122,16 +126,20 @@ class WebastoConnectCard extends HTMLElement {
         this._pickEntry(
           entries,
           (entry) =>
-            entry.entity_id?.startsWith("sensor.") &&
-            entry.device_class === "temperature"
+            entry.entity_id?.startsWith("sensor.") && (
+              entityDeviceClass(entry) === "temperature" ||
+              entry.original_name === "Temperature"
+            )
         ),
       battery_entity:
         overrides.battery_entity ||
         this._pickEntry(
           entries,
           (entry) =>
-            entry.entity_id?.startsWith("sensor.") &&
-            entry.device_class === "voltage"
+            entry.entity_id?.startsWith("sensor.") && (
+              entityDeviceClass(entry) === "voltage" ||
+              entry.original_name === "Battery"
+            )
         ),
       location_entity:
         overrides.location_entity ||

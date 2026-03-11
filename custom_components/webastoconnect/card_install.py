@@ -1,5 +1,6 @@
 """Helpers for installing/updating the bundled Webasto Connect Lovelace card."""
 
+from hashlib import sha256
 from pathlib import Path
 import re
 import shutil
@@ -28,6 +29,14 @@ def read_card_version(path: Path) -> str | None:
     return None
 
 
+def read_card_hash(path: Path) -> str | None:
+    """Read a short content hash for cache-busting."""
+    try:
+        return sha256(path.read_bytes()).hexdigest()[:12]
+    except OSError:
+        return None
+
+
 def should_install_card(
     source_version: str | None,
     installed_version: str | None,
@@ -49,14 +58,16 @@ def should_install_card(
         return True
 
 
-def ensure_card_installed(integration_path: Path, www_path: Path) -> tuple[bool, str | None]:
+def ensure_card_installed(
+    integration_path: Path, www_path: Path
+) -> tuple[bool, str | None, str | None]:
     """Copy bundled card assets into Home Assistant www directory when needed."""
     source_dir = integration_path / CARD_SOURCE_DIR
     source_entry = source_dir / CARD_FILENAME
 
     source_version = read_card_version(source_entry)
     if source_version is None or not source_entry.exists():
-        return False, None
+        return False, None, None
 
     target_dir = www_path / CARD_WWW_SUBDIR
     target_entry = target_dir / CARD_FILENAME
@@ -68,9 +79,9 @@ def ensure_card_installed(integration_path: Path, www_path: Path) -> tuple[bool,
         source_entry,
         target_entry,
     ):
-        return False, source_version
+        return False, source_version, read_card_hash(target_entry)
 
     target_dir.mkdir(parents=True, exist_ok=True)
 
     shutil.copy2(source_entry, target_entry)
-    return True, source_version
+    return True, source_version, read_card_hash(target_entry)
