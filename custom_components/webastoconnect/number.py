@@ -90,15 +90,21 @@ class WebastoConnectNumber(WebastoBaseEntity, NumberEntity):
         """Get the native value."""
         return cast(
             float,
-            self.entity_description.value_fn(self._cloud.devices[self._device_id]),  # type: ignore
+            self.entity_description.value_fn(self._device),  # type: ignore
         )
+
+    @property
+    def available(self) -> bool:
+        """Return False when the device is explicitly disconnected."""
+        self._attr_available = self._is_device_connected
+        return self._attr_available
 
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
         LOGGER.debug("Setting '%s' to '%s'", self.entity_id, value)
         await self.coordinator.async_execute_cloud_call(
             self.entity_description.set_fn,  # type: ignore[arg-type]
-            self._cloud.devices[self._device_id],
+            self._device,
             value,
         )
         self.coordinator.async_update_listeners()

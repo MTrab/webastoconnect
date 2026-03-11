@@ -100,25 +100,43 @@ class WebastoConnectSwitch(WebastoBaseEntity, SwitchEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        previous_state = (self._attr_name, self._attr_is_on, self._attr_icon)
+        previous_state = (
+            self._attr_name,
+            self._attr_is_on,
+            self._attr_icon,
+            getattr(self, "_attr_available", True),
+        )
         self._handle_states()
-        current_state = (self._attr_name, self._attr_is_on, self._attr_icon)
+        new_available = self._is_device_connected
+        self._attr_available = new_available
+        current_state = (
+            self._attr_name,
+            self._attr_is_on,
+            self._attr_icon,
+            new_available,
+        )
         if current_state != previous_state:
             self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        """Return False when the device is explicitly disconnected."""
+        self._attr_available = self._is_device_connected
+        return self._attr_available
 
     def _handle_states(self) -> None:
         """Handle the switch states."""
         if not isinstance(self.entity_description.name_fn, type(None)):  # type: ignore
             self._attr_name = self.entity_description.name_fn(  # type: ignore
-                self._cloud.devices[self._device_id]
+                self._device
             )
 
         self._attr_is_on = self.entity_description.value_fn(  # type: ignore
-            self._cloud.devices[self._device_id]
+            self._device
         )
 
         if self.entity_description.key == "main_output":
-            if self._cloud.devices[self._device_id].is_ventilation:
+            if self._device.is_ventilation:
                 self._attr_icon = "mdi:fan" if self._attr_is_on else "mdi:fan-off"
             else:
                 self._attr_icon = (
