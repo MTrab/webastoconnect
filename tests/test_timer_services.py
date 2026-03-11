@@ -361,7 +361,7 @@ def test_coerce_timer_builds_repeat_mask_from_repeat_days() -> None:
         hass=hass,
     )
 
-    assert timer.repeat == 72
+    assert timer.repeat == 17
 
 
 def test_coerce_timer_allows_empty_repeat_days_for_one_time_timer() -> None:

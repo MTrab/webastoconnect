@@ -18,7 +18,7 @@ def test_next_timer_sensor_payload_selects_soonest_enabled_timer() -> None:
                             "type": "simple",
                             "start": 600,  # 10:00 UTC
                             "duration": 1800,
-                            "repeat": 64,  # Monday
+                            "repeat": 1,  # Monday
                             "enabled": True,
                         },
                         {
@@ -103,7 +103,7 @@ def test_next_timer_sensor_payload_includes_ventilation_line() -> None:
                             "type": "simple",
                             "start": 610,  # 10:10
                             "duration": 1800,
-                            "repeat": 64,
+                            "repeat": 1,
                             "enabled": True,
                         }
                     ],
@@ -115,7 +115,7 @@ def test_next_timer_sensor_payload_includes_ventilation_line() -> None:
                             "type": "simple",
                             "start": 605,  # 10:05
                             "duration": 1800,
-                            "repeat": 64,
+                            "repeat": 1,
                             "enabled": True,
                         }
                     ],
