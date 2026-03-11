@@ -1,0 +1,43 @@
+{
+    "title": "Webasto Connect (ThermoConnect)",
+    "config": {
+        "abort": {
+            "already_configured": "Tämä tili on jo määritetty",
+            "reauth_successful": "Uudelleentodennus onnistui"
+        },
+        "error": {
+            "cannot_connect": "Yhteyden muodostaminen epäonnistui",
+            "invalid_auth": "Virheelliset tunnistetiedot"
+        },
+        "step": {
+            "reauth_confirm": {
+                "description": "Kirjaudu uudelleen Webasto Connect -tilillesi jatkaaksesi.",
+                "title": "Todenna Webasto Connect -tili uudelleen",
+                "data": {
+                    "email": "Sähköposti",
+                    "password": "Salasana"
+                }
+            },
+            "user": {
+                "data": {
+                    "email": "Sähköposti",
+                    "password": "Salasana"
+                }
+            }
+        }
+    },
+    "options": {
+        "error": {
+            "cannot_connect": "Yhteyden muodostaminen epäonnistui",
+            "invalid_auth": "Virheelliset tunnistetiedot"
+        },
+        "step": {
+            "init": {
+                "data": {
+                    "email": "Sähköposti",
+                    "password": "Salasana"
+                }
+            }
+        }
+    }
+}
