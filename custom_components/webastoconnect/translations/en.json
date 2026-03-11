@@ -6,6 +6,7 @@
             "reauth_successful": "Sucessfully re-authenticated"
         },
         "error": {
+            "cannot_connect": "Cannot connect",
             "invalid_auth": "Invalid authentication"
         },
         "step": {
@@ -27,6 +28,7 @@
     },
     "options": {
         "error": {
+            "cannot_connect": "Cannot connect",
             "invalid_auth": "Invalid authentication"
         },
         "step": {
