@@ -22,12 +22,22 @@
       "close": "Luk",
       "map_unavailable": "Lokation er ikke tilgængelig",
       "timers_empty": "Ingen timere konfigureret",
+      "add_timer": "Tilføj timer",
+      "start_time": "Starttid",
+      "duration_minutes": "Varighed (min)",
       "timer_enabled": "Aktiv",
       "timer_disabled": "Deaktiveret",
       "timer_once": "Kun én gang",
       "timer_repeating": "Gentages",
       "timers_manage_note": "Timere vist her tilhører kun det aktive output.",
-      "timers_readonly_note": "Timerstyring kræver en connected enhed og en valgt Webasto-enhed."
+      "timers_readonly_note": "Timerstyring kræver en connected enhed og en valgt Webasto-enhed.",
+      "day_monday": "Man",
+      "day_tuesday": "Tir",
+      "day_wednesday": "Ons",
+      "day_thursday": "Tor",
+      "day_friday": "Fre",
+      "day_saturday": "Lør",
+      "day_sunday": "Søn"
     }
   }
 }

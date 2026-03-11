@@ -1,7 +1,7 @@
 globalThis.__WEBASTO_CONNECT_CARD_VERSION__ = "0.1.0b21";
-var H={card:{ui:{geo_fence:"Geo-fence",mode:"Modus",timers:"Timere",map:"Kort",heating:"Opvarmning",ventilation:"Ventilation",mode_unavailable:"Utilg\xE6ngelig",active:"Aktiv",inactive:"Ikke aktiv",offline_title:"Offline",offline_label:`ThermoConnect er ikke tilg\xE6ngelig
-(intet netv\xE6rk)`,ending_now:"Slutter nu",left:"tilbage",main_output_missing:"V\xE6lg en Webasto-enhed eller main output entity i kortindstillinger",output:"Output",toggle_output:"Skift output",delete:"Slet",save:"Gem",close:"Luk",map_unavailable:"Lokation er ikke tilg\xE6ngelig",timers_empty:"Ingen timere konfigureret",timer_enabled:"Aktiv",timer_disabled:"Deaktiveret",timer_once:"Kun \xE9n gang",timer_repeating:"Gentages",timers_manage_note:"Timere vist her tilh\xF8rer kun det aktive output.",timers_readonly_note:"Timerstyring kr\xE6ver en connected enhed og en valgt Webasto-enhed."}}};var U={card:{ui:{geo_fence:"Geo-fence",mode:"Mode",timers:"Timers",map:"Map",heating:"Heating",ventilation:"Ventilation",mode_unavailable:"Unavailable",active:"Active",inactive:"Inactive",offline_title:"Offline",offline_label:`ThermoConnect is unavailable
-(no network)`,ending_now:"Ending now",left:"left",main_output_missing:"Select a Webasto device or main output entity in card settings",output:"Output",toggle_output:"Toggle output",delete:"Delete",save:"Save",close:"Close",map_unavailable:"Location is unavailable",timers_empty:"No timers configured",timer_enabled:"Enabled",timer_disabled:"Disabled",timer_once:"One time",timer_repeating:"Repeating",timers_manage_note:"Timers shown here belong to the active output only.",timers_readonly_note:"Timer management requires a connected device and a selected Webasto device."}}};var x={da:H,en:U};function F(d,e){if(!d)return;let t=e.split("."),i=d;for(let o of t){if(i==null||typeof i!="object")return;i=i[o]}return typeof i=="string"?i:void 0}function ue(d){let e=String(d||"en").toLowerCase();if(x[e])return e;let t=e.split("-")[0];return x[t]?t:"en"}function n(d,e,t={}){let i=ue(d?.language),o=F(x[i],e)??F(x.en,e)??e;return Object.entries(t).forEach(([c,s])=>{o=o.replace(`{${c}}`,String(s))}),o}function r(d){return String(d??"").replaceAll("&","&amp;").replaceAll('"',"&quot;").replaceAll("<","&lt;").replaceAll(">","&gt;")}function O(d){return d?.device_class||d?.original_device_class||null}var q=class extends HTMLElement{static getConfigElement(){return document.createElement("webasto-connect-card-editor")}static getStubConfig(){return{device_id:""}}setConfig(e){this._config={connected_entity:e?.connected_entity,ventilation_mode_entity:e?.ventilation_mode_entity,next_timer_entity:e?.next_timer_entity,end_time_entity:e?.end_time_entity,...e}}set hass(e){this._hass=e,this._loadRegistryData(),this._render()}connectedCallback(){this.shadowRoot||this.attachShadow({mode:"open"}),this._render()}_getState(e){return e?this._hass?.states?.[e]:void 0}async _loadRegistryData(){if(!(!this._hass||this._registryDataLoaded||this._registryDataLoading)){this._registryDataLoading=!0;try{let[e,t]=await Promise.all([this._hass.callWS({type:"config/entity_registry/list"}),this._hass.callWS({type:"config/device_registry/list"})]);this._entityRegistry=Array.isArray(e)?e:[],this._deviceRegistry=Array.isArray(t)?t:[],this._registryDataLoaded=!0}catch{this._entityRegistry=[],this._deviceRegistry=[]}finally{this._registryDataLoading=!1,this._render()}}}_entriesForSelectedDevice(){let e=this._config?.device_id;return!e||!Array.isArray(this._entityRegistry)?[]:this._entityRegistry.filter(t=>t?.platform==="webastoconnect"&&t?.device_id===e&&!t?.hidden_by)}_pickEntry(e,t){return e.find(i=>t(i))?.entity_id}_resolveEntities(){let e=this._entriesForSelectedDevice(),t=this._config||{};return{main_output_entity:t.main_output_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("switch.")&&i.entity_category==null&&i.original_name!=="AUX1"&&i.original_name!=="AUX2"),ventilation_mode_entity:t.ventilation_mode_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("switch.")&&i.original_name==="Ventilation Mode"),end_time_entity:t.end_time_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("sensor.")&&O(i)==="timestamp"&&i.original_name!=="Next start"),temperature_entity:t.temperature_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("sensor.")&&(O(i)==="temperature"||i.original_name==="Temperature")),battery_entity:t.battery_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("sensor.")&&(O(i)==="voltage"||i.original_name==="Battery")),connected_entity:t.connected_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("binary_sensor.")&&i.original_name==="Connected"),next_timer_entity:t.next_timer_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("sensor.")&&i.original_name==="Next start"),location_entity:t.location_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("device_tracker."))}}_isConnected(e){return e?e.state!=="off":!0}_parseEndDate(e){if(e==null||e==="")return null;let t=Number(e);if(Number.isFinite(t)){let o=t<1e12?t*1e3:t,c=new Date(o);return Number.isNaN(c.getTime())?null:c}let i=new Date(String(e));return Number.isNaN(i.getTime())?null:i}_computeLabel(e,t){if(!e||e.state!=="on")return n(this._hass,"card.ui.inactive");if(!t||!t.state||t.state==="unknown"||t.state==="unavailable")return n(this._hass,"card.ui.active");let i=this._parseEndDate(t.state);if(!i)return n(this._hass,"card.ui.active");let o=Math.ceil((i.getTime()-Date.now())/6e4);if(o<=0)return n(this._hass,"card.ui.ending_now");let c=Math.floor(o/60),s=o%60;return`${c}:${String(s).padStart(2,"0")} ${n(this._hass,"card.ui.left")}`}_computeOutputName(e){let t=e?.attributes?.friendly_name;return typeof t=="string"&&t.trim()!==""?t:n(this._hass,"card.ui.output")}_toggleMainOutput(){let e=this._resolveEntities().main_output_entity;if(!this._hass||!e||!this._hass.states?.[e]){console.warn("[webasto-connect-card] Missing or unavailable main_output_entity:",e);return}this._hass.callService("homeassistant","toggle",{entity_id:e})}_stateWithUnit(e){if(!e)return"--";let t=e.state;if(t==="unknown"||t==="unavailable")return"--";let i=e.attributes?.unit_of_measurement;return i?`${t} ${i}`:String(t)}_locationText(e){if(!e)return"--";let t=String(e.state??"");if(t!==""&&t!=="unknown"&&t!=="unavailable"&&t!=="not_home")return t;let i=e.attributes?.latitude,o=e.attributes?.longitude;return typeof i=="number"&&typeof o=="number"?`${i.toFixed(5)}, ${o.toFixed(5)}`:"--"}_isMapEnabled(e,t){return!e||!e.startsWith("device_tracker.")||!t?!1:t.state!=="unknown"&&t.state!=="unavailable"}_openMapPopup(){let e=this._resolveEntities().location_entity,t=this._getState(e);this._isMapEnabled(e,t)&&(this._mapPopupOpen=!0,this._render())}_closeMapPopup(){this._mapPopupOpen=!1,this._render()}_openTimersPopup(){this._timersPopupOpen=!0,this._render()}_closeTimersPopup(){this._timersPopupOpen=!1,this._render()}_resolveMode(e){return!e||e.state==="unknown"||e.state==="unavailable"?null:e.state==="on"?"ventilation":"heating"}_modeLabel(e){return e==="ventilation"?n(this._hass,"card.ui.ventilation"):e==="heating"?n(this._hass,"card.ui.heating"):n(this._hass,"card.ui.mode_unavailable")}_isModeSelectable(e){return!!(e&&this._getState(e))}_openModePopup(){let e=this._resolveEntities().ventilation_mode_entity,t=this._getState(e);this._isModeSelectable(e)&&(this._modeDraft=this._resolveMode(t)||"heating",this._modePopupOpen=!0,this._render())}_closeModePopup(){this._modePopupOpen=!1,this._modeDraft=void 0,this._render()}_selectModeDraft(e){this._modeDraft=e,this._render()}_saveModeSelection(){let e=this._resolveEntities().ventilation_mode_entity;if(!this._hass||!e||!this._modeDraft)return;let t=this._modeDraft==="ventilation"?"turn_on":"turn_off";this._hass.callService("homeassistant",t,{entity_id:e}),this._closeModePopup()}_timerItems(e){let t=e?.attributes?.timers;return Array.isArray(t)?t.filter(i=>i&&typeof i=="object").map((i,o)=>({...i,index:o,line_code:i.line_code||i.line||"OUTH"})):[]}_activeLine(e){return this._resolveMode(e)==="ventilation"?"OUTV":"OUTH"}_formatTimerRepeat(e){return e.repeat?n(this._hass,"card.ui.timer_repeating"):n(this._hass,"card.ui.timer_once")}_canManageTimers(e,t){return!!e&&t}_toggleTimerEnabled(e){let t=this._config?.device_id;!this._hass||!t||this._hass.callService("webastoconnect","update_timer",{device_id:t,timer_index:e.index,enabled:!e.enabled})}_deleteTimer(e){let t=this._config?.device_id;!this._hass||!t||this._hass.callService("webastoconnect","delete_timer",{device_id:t,timer_index:e.index})}async _renderMapPopup(e){let t=this.shadowRoot?.getElementById("map-card-host");if(!(!t||!this._hass||!e)){t.innerHTML="";try{let o=await(await window.loadCardHelpers?.())?.createCardElement?.({type:"map",entities:[e]});if(!o){t.innerHTML=`<div class="map-unavailable">${r(n(this._hass,"card.ui.map_unavailable"))}</div>`;return}o.hass=this._hass,o.style.display="block",o.style.height="360px",t.appendChild(o)}catch{t.innerHTML=`<div class="map-unavailable">${r(n(this._hass,"card.ui.map_unavailable"))}</div>`}}}_render(){if(!this.shadowRoot||!this._config||!this._hass)return;let e=this._resolveEntities(),t=this._getState(e.main_output_entity),i=this._getState(e.end_time_entity),o=this._getState(e.temperature_entity),c=this._getState(e.battery_entity),s=this._getState(e.location_entity),v=this._getState(e.ventilation_mode_entity),V=this._getState(e.connected_entity),G=this._getState(e.next_timer_entity),l=this._isConnected(V),K=this._activeLine(v),y=this._timerItems(G).filter(a=>a.line_code===K),C=!!t,X=C&&t.state==="on",Y=l&&X?"#d33131":"#c5cfdf",I=l?this._computeOutputName(t):n(this._hass,"card.ui.offline_title"),L=l?C?this._computeLabel(t,i):n(this._hass,"card.ui.main_output_missing"):n(this._hass,"card.ui.offline_label"),J=l?this._stateWithUnit(o):"--",Q=l?this._stateWithUnit(c):"--",Z=this._locationText(s),A=l?this._config.center_icon||t?.attributes?.icon||"mdi:car-defrost-rear":"mdi:signal-off",ee="",w=n(this._hass,"card.ui.mode"),k=n(this._hass,"card.ui.timers"),$=n(this._hass,"card.ui.map"),te=n(this._hass,"card.ui.toggle_output"),g=l&&this._isModeSelectable(e.ventilation_mode_entity),ie=g?"mode-enabled":"mode-disabled",oe=g?"0":"-1",ae=g?"false":"true",B=this._modePopupOpen&&g,W=this._modeDraft||this._resolveMode(v)||"heating",ne=n(this._hass,"card.ui.save"),f=this._isMapEnabled(e.location_entity,s),se=f?"map-enabled":"map-disabled",re=f?"0":"-1",de=f?"false":"true",N=this._mapPopupOpen&&f,b=!!e.next_timer_entity,le=b?"timers-enabled":"timers-disabled",ce=b?"0":"-1",pe=b?"false":"true",j=this._timersPopupOpen&&b,S=this._canManageTimers(this._config?.device_id,l),M=n(this._hass,"card.ui.close");this.shadowRoot.innerHTML=`
+var J={card:{ui:{geo_fence:"Geo-fence",mode:"Modus",timers:"Timere",map:"Kort",heating:"Opvarmning",ventilation:"Ventilation",mode_unavailable:"Utilg\xE6ngelig",active:"Aktiv",inactive:"Ikke aktiv",offline_title:"Offline",offline_label:`ThermoConnect er ikke tilg\xE6ngelig
+(intet netv\xE6rk)`,ending_now:"Slutter nu",left:"tilbage",main_output_missing:"V\xE6lg en Webasto-enhed eller main output entity i kortindstillinger",output:"Output",toggle_output:"Skift output",delete:"Slet",save:"Gem",close:"Luk",map_unavailable:"Lokation er ikke tilg\xE6ngelig",timers_empty:"Ingen timere konfigureret",add_timer:"Tilf\xF8j timer",start_time:"Starttid",duration_minutes:"Varighed (min)",timer_enabled:"Aktiv",timer_disabled:"Deaktiveret",timer_once:"Kun \xE9n gang",timer_repeating:"Gentages",timers_manage_note:"Timere vist her tilh\xF8rer kun det aktive output.",timers_readonly_note:"Timerstyring kr\xE6ver en connected enhed og en valgt Webasto-enhed.",day_monday:"Man",day_tuesday:"Tir",day_wednesday:"Ons",day_thursday:"Tor",day_friday:"Fre",day_saturday:"L\xF8r",day_sunday:"S\xF8n"}}};var Q={card:{ui:{geo_fence:"Geo-fence",mode:"Mode",timers:"Timers",map:"Map",heating:"Heating",ventilation:"Ventilation",mode_unavailable:"Unavailable",active:"Active",inactive:"Inactive",offline_title:"Offline",offline_label:`ThermoConnect is unavailable
+(no network)`,ending_now:"Ending now",left:"left",main_output_missing:"Select a Webasto device or main output entity in card settings",output:"Output",toggle_output:"Toggle output",delete:"Delete",save:"Save",close:"Close",map_unavailable:"Location is unavailable",timers_empty:"No timers configured",add_timer:"Add timer",start_time:"Start time",duration_minutes:"Duration (min)",timer_enabled:"Enabled",timer_disabled:"Disabled",timer_once:"One time",timer_repeating:"Repeating",timers_manage_note:"Timers shown here belong to the active output only.",timers_readonly_note:"Timer management requires a connected device and a selected Webasto device.",day_monday:"Mon",day_tuesday:"Tue",day_wednesday:"Wed",day_thursday:"Thu",day_friday:"Fri",day_saturday:"Sat",day_sunday:"Sun"}}};var E={da:J,en:Q};function Z(l,e){if(!l)return;let t=e.split("."),i=l;for(let n of t){if(i==null||typeof i!="object")return;i=i[n]}return typeof i=="string"?i:void 0}function we(l){let e=String(l||"en").toLowerCase();if(E[e])return e;let t=e.split("-")[0];return E[t]?t:"en"}function a(l,e,t={}){let i=we(l?.language),n=Z(E[i],e)??Z(E.en,e)??e;return Object.entries(t).forEach(([d,r])=>{n=n.replace(`{${d}}`,String(r))}),n}function s(l){return String(l??"").replaceAll("&","&amp;").replaceAll('"',"&quot;").replaceAll("<","&lt;").replaceAll(">","&gt;")}function q(l){return l?.device_class||l?.original_device_class||null}var A=class extends HTMLElement{static getConfigElement(){return document.createElement("webasto-connect-card-editor")}static getStubConfig(){return{device_id:""}}setConfig(e){this._config={connected_entity:e?.connected_entity,ventilation_mode_entity:e?.ventilation_mode_entity,next_timer_entity:e?.next_timer_entity,end_time_entity:e?.end_time_entity,...e}}set hass(e){this._hass=e,this._loadRegistryData(),this._render()}connectedCallback(){this.shadowRoot||this.attachShadow({mode:"open"}),this._render()}_getState(e){return e?this._hass?.states?.[e]:void 0}async _loadRegistryData(){if(!(!this._hass||this._registryDataLoaded||this._registryDataLoading)){this._registryDataLoading=!0;try{let[e,t]=await Promise.all([this._hass.callWS({type:"config/entity_registry/list"}),this._hass.callWS({type:"config/device_registry/list"})]);this._entityRegistry=Array.isArray(e)?e:[],this._deviceRegistry=Array.isArray(t)?t:[],this._registryDataLoaded=!0}catch{this._entityRegistry=[],this._deviceRegistry=[]}finally{this._registryDataLoading=!1,this._render()}}}_entriesForSelectedDevice(){let e=this._config?.device_id;return!e||!Array.isArray(this._entityRegistry)?[]:this._entityRegistry.filter(t=>t?.platform==="webastoconnect"&&t?.device_id===e&&!t?.hidden_by)}_pickEntry(e,t){return e.find(i=>t(i))?.entity_id}_resolveEntities(){let e=this._entriesForSelectedDevice(),t=this._config||{};return{main_output_entity:t.main_output_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("switch.")&&i.entity_category==null&&i.original_name!=="AUX1"&&i.original_name!=="AUX2"),ventilation_mode_entity:t.ventilation_mode_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("switch.")&&i.original_name==="Ventilation Mode"),end_time_entity:t.end_time_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("sensor.")&&q(i)==="timestamp"&&i.original_name!=="Next start"),temperature_entity:t.temperature_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("sensor.")&&(q(i)==="temperature"||i.original_name==="Temperature")),battery_entity:t.battery_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("sensor.")&&(q(i)==="voltage"||i.original_name==="Battery")),connected_entity:t.connected_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("binary_sensor.")&&i.original_name==="Connected"),next_timer_entity:t.next_timer_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("sensor.")&&i.original_name==="Next start"),location_entity:t.location_entity||this._pickEntry(e,i=>i.entity_id?.startsWith("device_tracker."))}}_isConnected(e){return e?e.state!=="off":!0}_parseEndDate(e){if(e==null||e==="")return null;let t=Number(e);if(Number.isFinite(t)){let n=t<1e12?t*1e3:t,d=new Date(n);return Number.isNaN(d.getTime())?null:d}let i=new Date(String(e));return Number.isNaN(i.getTime())?null:i}_computeLabel(e,t){if(!e||e.state!=="on")return a(this._hass,"card.ui.inactive");if(!t||!t.state||t.state==="unknown"||t.state==="unavailable")return a(this._hass,"card.ui.active");let i=this._parseEndDate(t.state);if(!i)return a(this._hass,"card.ui.active");let n=Math.ceil((i.getTime()-Date.now())/6e4);if(n<=0)return a(this._hass,"card.ui.ending_now");let d=Math.floor(n/60),r=n%60;return`${d}:${String(r).padStart(2,"0")} ${a(this._hass,"card.ui.left")}`}_computeOutputName(e){let t=e?.attributes?.friendly_name;return typeof t=="string"&&t.trim()!==""?t:a(this._hass,"card.ui.output")}_toggleMainOutput(){let e=this._resolveEntities().main_output_entity;if(!this._hass||!e||!this._hass.states?.[e]){console.warn("[webasto-connect-card] Missing or unavailable main_output_entity:",e);return}this._hass.callService("homeassistant","toggle",{entity_id:e})}_stateWithUnit(e){if(!e)return"--";let t=e.state;if(t==="unknown"||t==="unavailable")return"--";let i=e.attributes?.unit_of_measurement;return i?`${t} ${i}`:String(t)}_locationText(e){if(!e)return"--";let t=String(e.state??"");if(t!==""&&t!=="unknown"&&t!=="unavailable"&&t!=="not_home")return t;let i=e.attributes?.latitude,n=e.attributes?.longitude;return typeof i=="number"&&typeof n=="number"?`${i.toFixed(5)}, ${n.toFixed(5)}`:"--"}_isMapEnabled(e,t){return!e||!e.startsWith("device_tracker.")||!t?!1:t.state!=="unknown"&&t.state!=="unavailable"}_openMapPopup(){let e=this._resolveEntities().location_entity,t=this._getState(e);this._isMapEnabled(e,t)&&(this._mapPopupOpen=!0,this._render())}_closeMapPopup(){this._mapPopupOpen=!1,this._render()}_openTimersPopup(){this._timersPopupOpen=!0,this._render()}_closeTimersPopup(){this._timersPopupOpen=!1,this._timerDraftOpen=!1,this._timerDraft=void 0,this._render()}_defaultTimerDraft(){return{start_time:"07:00",duration_minutes:"30",enabled:!0,repeat_days:[]}}_openTimerDraft(){this._timerDraftOpen=!0,this._timerDraft=this._defaultTimerDraft(),this._render()}_closeTimerDraft(){this._timerDraftOpen=!1,this._timerDraft=void 0,this._render()}_setTimerDraftField(e,t){let i=this._timerDraft||this._defaultTimerDraft();this._timerDraft={...i,[e]:t},this._render()}_toggleTimerDraftDay(e){let t=this._timerDraft||this._defaultTimerDraft(),i=new Set(t.repeat_days||[]);i.has(e)?i.delete(e):i.add(e),this._timerDraft={...t,repeat_days:[...i]},this._render()}_saveNewTimer(){let e=this._config?.device_id,t=this._timerDraft;!this._hass||!e||!t?.start_time||!t?.duration_minutes||(this._hass.callService("webastoconnect","create_timer",{device_id:e,start_time:t.start_time,duration_minutes:Number(t.duration_minutes),enabled:!!t.enabled,repeat_days:t.repeat_days||[]}),this._closeTimerDraft())}_resolveMode(e){return!e||e.state==="unknown"||e.state==="unavailable"?null:e.state==="on"?"ventilation":"heating"}_modeLabel(e){return e==="ventilation"?a(this._hass,"card.ui.ventilation"):e==="heating"?a(this._hass,"card.ui.heating"):a(this._hass,"card.ui.mode_unavailable")}_isModeSelectable(e){return!!(e&&this._getState(e))}_openModePopup(){let e=this._resolveEntities().ventilation_mode_entity,t=this._getState(e);this._isModeSelectable(e)&&(this._modeDraft=this._resolveMode(t)||"heating",this._modePopupOpen=!0,this._render())}_closeModePopup(){this._modePopupOpen=!1,this._modeDraft=void 0,this._render()}_selectModeDraft(e){this._modeDraft=e,this._render()}_saveModeSelection(){let e=this._resolveEntities().ventilation_mode_entity;if(!this._hass||!e||!this._modeDraft)return;let t=this._modeDraft==="ventilation"?"turn_on":"turn_off";this._hass.callService("homeassistant",t,{entity_id:e}),this._closeModePopup()}_timerItems(e){let t=e?.attributes?.timers;return Array.isArray(t)?t.filter(i=>i&&typeof i=="object").map((i,n)=>({...i,index:n,line_code:i.line_code||i.line||"OUTH"})):[]}_activeLine(e){return this._resolveMode(e)==="ventilation"?"OUTV":"OUTH"}_formatTimerRepeat(e){return e.repeat?a(this._hass,"card.ui.timer_repeating"):a(this._hass,"card.ui.timer_once")}_formatTimerStart(e){let t=Number(e?.start);if(!Number.isFinite(t)||t<0)return"--:--";let i=Math.floor(t/60)%24,n=t%60,d=new Date,r=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),i,n,0,0));return`${String(r.getHours()).padStart(2,"0")}:${String(r.getMinutes()).padStart(2,"0")}`}_canManageTimers(e,t){return!!e&&t}_weekdayOptions(){return[["monday",a(this._hass,"card.ui.day_monday")],["tuesday",a(this._hass,"card.ui.day_tuesday")],["wednesday",a(this._hass,"card.ui.day_wednesday")],["thursday",a(this._hass,"card.ui.day_thursday")],["friday",a(this._hass,"card.ui.day_friday")],["saturday",a(this._hass,"card.ui.day_saturday")],["sunday",a(this._hass,"card.ui.day_sunday")]]}_toggleTimerEnabled(e){let t=this._config?.device_id;!this._hass||!t||this._hass.callService("webastoconnect","update_timer",{device_id:t,timer_index:e.index,enabled:!e.enabled})}_deleteTimer(e){let t=this._config?.device_id;!this._hass||!t||this._hass.callService("webastoconnect","delete_timer",{device_id:t,timer_index:e.index})}async _renderMapPopup(e){let t=this.shadowRoot?.getElementById("map-card-host");if(!(!t||!this._hass||!e)){t.innerHTML="";try{let n=await(await window.loadCardHelpers?.())?.createCardElement?.({type:"map",entities:[e]});if(!n){t.innerHTML=`<div class="map-unavailable">${s(a(this._hass,"card.ui.map_unavailable"))}</div>`;return}n.hass=this._hass,n.style.display="block",n.style.height="360px",t.appendChild(n)}catch{t.innerHTML=`<div class="map-unavailable">${s(a(this._hass,"card.ui.map_unavailable"))}</div>`}}}_render(){if(!this.shadowRoot||!this._config||!this._hass)return;let e=this._resolveEntities(),t=this._getState(e.main_output_entity),i=this._getState(e.end_time_entity),n=this._getState(e.temperature_entity),d=this._getState(e.battery_entity),r=this._getState(e.location_entity),k=this._getState(e.ventilation_mode_entity),ee=this._getState(e.connected_entity),te=this._getState(e.next_timer_entity),m=this._isConnected(ee),ie=this._activeLine(k),$=this._timerItems(te).filter(o=>o.line_code===ie),N=!!t,ae=N&&t.state==="on",oe=m&&ae?"#d33131":"#c5cfdf",W=m?this._computeOutputName(t):a(this._hass,"card.ui.offline_title"),j=m?N?this._computeLabel(t,i):a(this._hass,"card.ui.main_output_missing"):a(this._hass,"card.ui.offline_label"),ne=m?this._stateWithUnit(n):"--",se=m?this._stateWithUnit(d):"--",re=this._locationText(r),F=m?this._config.center_icon||t?.attributes?.icon||"mdi:car-defrost-rear":"mdi:signal-off",de="",M=a(this._hass,"card.ui.mode"),R=a(this._hass,"card.ui.timers"),O=a(this._hass,"card.ui.map"),le=a(this._hass,"card.ui.toggle_output"),f=m&&this._isModeSelectable(e.ventilation_mode_entity),ce=f?"mode-enabled":"mode-disabled",pe=f?"0":"-1",me=f?"false":"true",U=this._modePopupOpen&&f,H=this._modeDraft||this._resolveMode(k)||"heating",ue=a(this._hass,"card.ui.save"),g=this._isMapEnabled(e.location_entity,r),he=g?"map-enabled":"map-disabled",_e=g?"0":"-1",fe=g?"false":"true",V=this._mapPopupOpen&&g,b=!!e.next_timer_entity,ge=b?"timers-enabled":"timers-disabled",be=b?"0":"-1",ye=b?"false":"true",G=this._timersPopupOpen&&b,y=this._canManageTimers(this._config?.device_id,m),T=this._timerDraft||this._defaultTimerDraft(),K=this._timerDraftOpen&&y,D=a(this._hass,"card.ui.close");this.shadowRoot.innerHTML=`
       <style>
         :host { display: block; }
         .wrapper {
@@ -100,7 +100,7 @@ var H={card:{ui:{geo_fence:"Geo-fence",mode:"Modus",timers:"Timere",map:"Kort",h
           border-radius: 50%;
           background: #efefef;
           box-shadow: 0 0 0 10px #ffffff;
-          border: 10px solid ${Y};
+          border: 10px solid ${oe};
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -342,6 +342,98 @@ var H={card:{ui:{geo_fence:"Geo-fence",mode:"Modus",timers:"Timere",map:"Kort",h
           font-size: 13px;
           text-align: center;
         }
+        .timer-add-wrap {
+          display: flex;
+          justify-content: center;
+        }
+        .timer-add {
+          border: 0;
+          border-radius: 14px;
+          min-width: 120px;
+          padding: 12px 20px;
+          background: var(--primary-color, #03a9f4);
+          color: var(--text-primary-color, #fff);
+          cursor: pointer;
+          font: inherit;
+          font-weight: 500;
+        }
+        .timer-form {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          border: 1px solid var(--divider-color, rgba(255,255,255,0.12));
+          border-radius: 18px;
+          background: var(--secondary-background-color, #eee);
+          padding: 14px;
+        }
+        .timer-form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+        .timer-form label {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          color: var(--primary-text-color, #111);
+          font-size: 14px;
+        }
+        .timer-form input {
+          font: inherit;
+          color: var(--primary-text-color, #111);
+          background: var(--card-background-color, #fff);
+          border: 1px solid var(--divider-color, #ddd);
+          border-radius: 10px;
+          padding: 10px 12px;
+        }
+        .timer-checkbox {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--primary-text-color, #111);
+          font-size: 14px;
+        }
+        .timer-days {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .timer-day {
+          border: 1px solid var(--divider-color, rgba(255,255,255,0.12));
+          border-radius: 999px;
+          padding: 8px 12px;
+          background: var(--card-background-color, #fff);
+          color: var(--primary-text-color, #111);
+          cursor: pointer;
+          font: inherit;
+        }
+        .timer-day.selected {
+          background: var(--primary-color, #03a9f4);
+          color: var(--text-primary-color, #fff);
+          border-color: var(--primary-color, #03a9f4);
+        }
+        .timer-form-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 8px;
+        }
+        .timer-form-secondary,
+        .timer-form-primary {
+          border: 0;
+          border-radius: 12px;
+          padding: 10px 14px;
+          cursor: pointer;
+          font: inherit;
+          font-weight: 500;
+        }
+        .timer-form-secondary {
+          background: var(--secondary-background-color, #eee);
+          color: var(--primary-text-color, #111);
+        }
+        .timer-form-primary {
+          background: var(--primary-color, #03a9f4);
+          color: var(--text-primary-color, #fff);
+        }
         .map-card-host {
           height: 360px;
           background: var(--card-background-color, #fff);
@@ -363,100 +455,130 @@ var H={card:{ui:{geo_fence:"Geo-fence",mode:"Modus",timers:"Timere",map:"Kort",h
       </style>
       <div class="wrapper">
         <ha-card>
-          <div class="q tl">${ee}</div>
-          <div class="q tr ${ie}" id="mode-action" role="button" tabindex="${oe}" aria-disabled="${ae}">
-            <span class="q-label">${w}</span>
+          <div class="q tl">${de}</div>
+          <div class="q tr ${ce}" id="mode-action" role="button" tabindex="${pe}" aria-disabled="${me}">
+            <span class="q-label">${M}</span>
           </div>
-          <div class="q bl ${le}" id="timers-action" role="button" tabindex="${ce}" aria-disabled="${pe}">${k}</div>
-          <div class="q br ${se}" id="map-action" role="button" tabindex="${re}" aria-disabled="${de}">${$}</div>
+          <div class="q bl ${ge}" id="timers-action" role="button" tabindex="${be}" aria-disabled="${ye}">${R}</div>
+          <div class="q br ${he}" id="map-action" role="button" tabindex="${_e}" aria-disabled="${fe}">${O}</div>
           <div class="divider-v"></div>
           <div class="divider-h"></div>
-          <div class="center-wrap ${l?"":"offline"}" id="center-toggle" role="button" tabindex="0" aria-label="${te}">
-            ${l?`
-            <ha-icon class="icon" icon="${A}" style="--mdc-icon-size: 96px;"></ha-icon>
-            <div class="name">${I}</div>
-            <div class="label">${L}</div>
+          <div class="center-wrap ${m?"":"offline"}" id="center-toggle" role="button" tabindex="0" aria-label="${le}">
+            ${m?`
+            <ha-icon class="icon" icon="${F}" style="--mdc-icon-size: 96px;"></ha-icon>
+            <div class="name">${W}</div>
+            <div class="label">${j}</div>
             `:`
-            <div class="offline-copy">${L}</div>
-            <ha-icon class="icon" icon="${A}" style="--mdc-icon-size: 72px;"></ha-icon>
-            <div class="name">${I}</div>
+            <div class="offline-copy">${j}</div>
+            <ha-icon class="icon" icon="${F}" style="--mdc-icon-size: 72px;"></ha-icon>
+            <div class="name">${W}</div>
             `}
           </div>
         </ha-card>
         <div class="meta">
           <div class="meta-row">
-            <span class="meta-item"><ha-icon icon="mdi:thermometer" style="--mdc-icon-size: 24px;"></ha-icon>${J}</span>
-            <span class="meta-item"><ha-icon icon="mdi:car-battery" style="--mdc-icon-size: 24px;"></ha-icon>${Q}</span>
+            <span class="meta-item"><ha-icon icon="mdi:thermometer" style="--mdc-icon-size: 24px;"></ha-icon>${ne}</span>
+            <span class="meta-item"><ha-icon icon="mdi:car-battery" style="--mdc-icon-size: 24px;"></ha-icon>${se}</span>
           </div>
-          <div class="meta-location"><ha-icon icon="mdi:map-marker" style="--mdc-icon-size: 24px;"></ha-icon>${Z}</div>
+          <div class="meta-location"><ha-icon icon="mdi:map-marker" style="--mdc-icon-size: 24px;"></ha-icon>${re}</div>
         </div>
       </div>
-      ${B?`
+      ${U?`
       <div class="modal-backdrop" id="mode-modal-backdrop">
-        <div class="mode-modal" role="dialog" aria-modal="true" aria-label="${w}">
+        <div class="mode-modal" role="dialog" aria-modal="true" aria-label="${M}">
           <div class="mode-modal-header">
-            <span>${w}</span>
-            <button class="modal-close" id="mode-modal-close">${M}</button>
+            <span>${M}</span>
+            <button class="modal-close" id="mode-modal-close">${D}</button>
           </div>
           <div class="mode-modal-body">
             <div class="mode-options">
-              <button class="mode-option ${W==="ventilation"?"selected":""}" id="mode-option-ventilation">
-                <span class="mode-option-title">${n(this._hass,"card.ui.ventilation")}</span>
+              <button class="mode-option ${H==="ventilation"?"selected":""}" id="mode-option-ventilation">
+                <span class="mode-option-title">${a(this._hass,"card.ui.ventilation")}</span>
                 <ha-icon class="mode-option-icon" icon="mdi:fan" style="--mdc-icon-size: 46px;"></ha-icon>
               </button>
-              <button class="mode-option ${W==="heating"?"selected":""}" id="mode-option-heating">
-                <span class="mode-option-title">${n(this._hass,"card.ui.heating")}</span>
+              <button class="mode-option ${H==="heating"?"selected":""}" id="mode-option-heating">
+                <span class="mode-option-title">${a(this._hass,"card.ui.heating")}</span>
                 <ha-icon class="mode-option-icon" icon="mdi:car-defrost-rear" style="--mdc-icon-size: 46px;"></ha-icon>
               </button>
             </div>
             <div class="mode-modal-actions">
-              <button class="mode-save" id="mode-save">${ne}</button>
+              <button class="mode-save" id="mode-save">${ue}</button>
             </div>
           </div>
         </div>
       </div>
       `:""}
-      ${j?`
+      ${G?`
       <div class="modal-backdrop" id="timers-modal-backdrop">
-        <div class="modal-shell" role="dialog" aria-modal="true" aria-label="${k}">
+        <div class="modal-shell" role="dialog" aria-modal="true" aria-label="${R}">
           <div class="modal-header">
-            <span>${k}</span>
-            <button class="modal-close" id="timers-modal-close">${M}</button>
+            <span>${R}</span>
+            <button class="modal-close" id="timers-modal-close">${D}</button>
           </div>
           <div class="timers-modal-body">
-            ${y.length?`
+            ${K?`
+            <div class="timer-form">
+              <div class="timer-form-grid">
+                <label>${s(a(this._hass,"card.ui.start_time"))}
+                  <input id="timer-start-time" type="time" value="${s(T.start_time)}">
+                </label>
+                <label>${s(a(this._hass,"card.ui.duration_minutes"))}
+                  <input id="timer-duration" type="number" min="1" max="1440" value="${s(T.duration_minutes)}">
+                </label>
+              </div>
+              <label class="timer-checkbox">
+                <input id="timer-enabled" type="checkbox" ${T.enabled?"checked":""}>
+                <span>${s(a(this._hass,"card.ui.timer_enabled"))}</span>
+              </label>
+              <div class="timer-days">
+                ${this._weekdayOptions().map(([o,p])=>`
+                <button class="timer-day ${(T.repeat_days||[]).includes(o)?"selected":""}" data-day="${o}" type="button">${s(p)}</button>
+                `).join("")}
+              </div>
+              <div class="timer-form-actions">
+                <button class="timer-form-secondary" id="timer-cancel" type="button">${s(D)}</button>
+                <button class="timer-form-primary" id="timer-save-new" type="button">${s(a(this._hass,"card.ui.add_timer"))}</button>
+              </div>
+            </div>
+            `:""}
+            ${$.length?`
             <div class="timers-list">
-              ${y.map(a=>`
+              ${$.map(o=>`
               <div class="timer-row">
                 <div class="timer-main">
-                  <div class="timer-title">${r(a.start_hhmm_utc||"--:--")}</div>
-                  <div class="timer-meta">${r(this._formatTimerRepeat(a))} \xB7 ${a.enabled?r(n(this._hass,"card.ui.timer_enabled")):r(n(this._hass,"card.ui.timer_disabled"))}</div>
+                  <div class="timer-title">${s(this._formatTimerStart(o))}</div>
+                  <div class="timer-meta">${s(this._formatTimerRepeat(o))} \xB7 ${o.enabled?s(a(this._hass,"card.ui.timer_enabled")):s(a(this._hass,"card.ui.timer_disabled"))}</div>
                 </div>
                 <div class="timer-actions">
-                  <ha-switch class="timer-toggle" data-timer-index="${a.index}" ${a.enabled?"checked":""} ${S?"":"disabled"}></ha-switch>
-                  <button class="timer-delete" data-delete-index="${a.index}" ${S?"":"disabled"}>${r(n(this._hass,"card.ui.delete"))}</button>
+                  <ha-switch class="timer-toggle" data-timer-index="${o.index}" ${o.enabled?"checked":""} ${y?"":"disabled"}></ha-switch>
+                  <button class="timer-delete" data-delete-index="${o.index}" ${y?"":"disabled"}>${s(a(this._hass,"card.ui.delete"))}</button>
                 </div>
               </div>
               `).join("")}
             </div>
-            `:`<div class="timers-empty">${r(n(this._hass,"card.ui.timers_empty"))}</div>`}
-            <div class="timers-note">${r(S?n(this._hass,"card.ui.timers_manage_note"):n(this._hass,"card.ui.timers_readonly_note"))}</div>
+            `:`<div class="timers-empty">${s(a(this._hass,"card.ui.timers_empty"))}</div>`}
+            ${y&&!K?`
+            <div class="timer-add-wrap">
+              <button class="timer-add" id="timer-add" type="button">${s(a(this._hass,"card.ui.add_timer"))}</button>
+            </div>
+            `:""}
+            <div class="timers-note">${s(y?a(this._hass,"card.ui.timers_manage_note"):a(this._hass,"card.ui.timers_readonly_note"))}</div>
           </div>
         </div>
       </div>
       `:""}
-      ${N?`
+      ${V?`
       <div class="modal-backdrop" id="map-modal-backdrop">
-        <div class="modal-shell" role="dialog" aria-modal="true" aria-label="${$}">
+        <div class="modal-shell" role="dialog" aria-modal="true" aria-label="${O}">
           <div class="modal-header">
-            <span>${$}</span>
-            <button class="modal-close" id="map-modal-close">${M}</button>
+            <span>${O}</span>
+            <button class="modal-close" id="map-modal-close">${D}</button>
           </div>
           <div class="map-card-host" id="map-card-host"></div>
         </div>
       </div>
       `:""}
-    `;let E=this.shadowRoot.getElementById("center-toggle");E&&l&&(E.onclick=()=>this._toggleMainOutput(),E.onkeydown=a=>{(a.key==="Enter"||a.key===" ")&&(a.preventDefault(),this._toggleMainOutput())});let T=this.shadowRoot.getElementById("mode-action");T&&g&&(T.onclick=()=>this._openModePopup(),T.onkeydown=a=>{(a.key==="Enter"||a.key===" ")&&(a.preventDefault(),this._openModePopup())});let R=this.shadowRoot.getElementById("timers-action");R&&b&&(R.onclick=()=>this._openTimersPopup(),R.onkeydown=a=>{(a.key==="Enter"||a.key===" ")&&(a.preventDefault(),this._openTimersPopup())});let D=this.shadowRoot.getElementById("map-action");if(D&&f&&(D.onclick=()=>this._openMapPopup(),D.onkeydown=a=>{(a.key==="Enter"||a.key===" ")&&(a.preventDefault(),this._openMapPopup())}),N){this._renderMapPopup(e.location_entity);let a=this.shadowRoot.getElementById("map-modal-close");a&&(a.onclick=()=>this._closeMapPopup());let p=this.shadowRoot.getElementById("map-modal-backdrop");p&&(p.onclick=m=>{m.target===p&&this._closeMapPopup()})}if(B){let a=this.shadowRoot.getElementById("mode-modal-close");a&&(a.onclick=()=>this._closeModePopup());let p=this.shadowRoot.getElementById("mode-option-ventilation");p&&(p.onclick=()=>this._selectModeDraft("ventilation"));let m=this.shadowRoot.getElementById("mode-option-heating");m&&(m.onclick=()=>this._selectModeDraft("heating"));let _=this.shadowRoot.getElementById("mode-save");_&&(_.onclick=()=>this._saveModeSelection());let h=this.shadowRoot.getElementById("mode-modal-backdrop");h&&(h.onclick=u=>{u.target===h&&this._closeModePopup()})}if(j){let a=this.shadowRoot.getElementById("timers-modal-close");a&&(a.onclick=()=>this._closeTimersPopup());let p=this.shadowRoot.getElementById("timers-modal-backdrop");p&&(p.onclick=m=>{m.target===p&&this._closeTimersPopup()}),this.shadowRoot.querySelectorAll(".timer-toggle").forEach(m=>{m.addEventListener("change",_=>{let h=Number(_.currentTarget?.dataset?.timerIndex),u=y.find(P=>P.index===h);u&&this._toggleTimerEnabled(u)})}),this.shadowRoot.querySelectorAll(".timer-delete").forEach(m=>{m.addEventListener("click",_=>{let h=Number(_.currentTarget?.dataset?.deleteIndex),u=y.find(P=>P.index===h);u&&this._deleteTimer(u)})})}}getCardSize(){return 4}},z=class extends HTMLElement{setConfig(e){this._config={...e},this._render()}set hass(e){this._hass=e,this._suggestionsLoaded||(this._suggestionsLoaded=!0,this._loadSuggestions()),this._render()}connectedCallback(){this.shadowRoot||this.attachShadow({mode:"open"}),this._render()}async _loadSuggestions(){if(this._hass){try{let[e,t]=await Promise.all([this._hass.callWS({type:"config/entity_registry/list"}),this._hass.callWS({type:"config/device_registry/list"})]),i=e.filter(s=>s.platform==="webastoconnect"&&!s.hidden_by),o=i.map(s=>s.entity_id),c=new Set(i.map(s=>s.device_id).filter(Boolean));this._deviceSuggestions=t.filter(s=>c.has(s.id)).map(s=>({id:s.id,name:s.name_by_user||s.name||s.id})).sort((s,v)=>s.name.localeCompare(v.name)),this._entitySuggestions=[...new Set(o)].sort()}catch{let t=Object.keys(this._hass.states||{}).filter(i=>i.includes("webasto"));this._entitySuggestions=[...new Set(t)].sort(),this._deviceSuggestions=[]}this._render()}}_datalistOptions(e){return(this._entitySuggestions||[]).filter(i=>e.includes(i.split(".")[0])).map(i=>`<option value="${r(i)}"></option>`).join("")}_handleInput(e){let t=e.target?.dataset?.field;if(!t)return;let i=String(e.target.value||"").trim(),o={...this._config||{}};i===""?delete o[t]:o[t]=i,this._config=o,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:o},bubbles:!0,composed:!0}))}_render(){if(!this.shadowRoot)return;let e=this._config||{},t=['<option value="">Select device automatically</option>',...(this._deviceSuggestions||[]).map(i=>`<option value="${r(i.id)}"${e.device_id===i.id?" selected":""}>${r(i.name)}</option>`)].join("");this.shadowRoot.innerHTML=`
+    `;let I=this.shadowRoot.getElementById("center-toggle");I&&m&&(I.onclick=()=>this._toggleMainOutput(),I.onkeydown=o=>{(o.key==="Enter"||o.key===" ")&&(o.preventDefault(),this._toggleMainOutput())});let P=this.shadowRoot.getElementById("mode-action");P&&f&&(P.onclick=()=>this._openModePopup(),P.onkeydown=o=>{(o.key==="Enter"||o.key===" ")&&(o.preventDefault(),this._openModePopup())});let L=this.shadowRoot.getElementById("timers-action");L&&b&&(L.onclick=()=>this._openTimersPopup(),L.onkeydown=o=>{(o.key==="Enter"||o.key===" ")&&(o.preventDefault(),this._openTimersPopup())});let C=this.shadowRoot.getElementById("map-action");if(C&&g&&(C.onclick=()=>this._openMapPopup(),C.onkeydown=o=>{(o.key==="Enter"||o.key===" ")&&(o.preventDefault(),this._openMapPopup())}),V){this._renderMapPopup(e.location_entity);let o=this.shadowRoot.getElementById("map-modal-close");o&&(o.onclick=()=>this._closeMapPopup());let p=this.shadowRoot.getElementById("map-modal-backdrop");p&&(p.onclick=u=>{u.target===p&&this._closeMapPopup()})}if(U){let o=this.shadowRoot.getElementById("mode-modal-close");o&&(o.onclick=()=>this._closeModePopup());let p=this.shadowRoot.getElementById("mode-option-ventilation");p&&(p.onclick=()=>this._selectModeDraft("ventilation"));let u=this.shadowRoot.getElementById("mode-option-heating");u&&(u.onclick=()=>this._selectModeDraft("heating"));let v=this.shadowRoot.getElementById("mode-save");v&&(v.onclick=()=>this._saveModeSelection());let h=this.shadowRoot.getElementById("mode-modal-backdrop");h&&(h.onclick=S=>{S.target===h&&this._closeModePopup()})}if(G){let o=this.shadowRoot.getElementById("timers-modal-close");o&&(o.onclick=()=>this._closeTimersPopup());let p=this.shadowRoot.getElementById("timers-modal-backdrop");p&&(p.onclick=c=>{c.target===p&&this._closeTimersPopup()}),this.shadowRoot.querySelectorAll(".timer-toggle").forEach(c=>{c.addEventListener("change",x=>{let _=Number(x.currentTarget?.dataset?.timerIndex),w=$.find(z=>z.index===_);w&&this._toggleTimerEnabled(w)})}),this.shadowRoot.querySelectorAll(".timer-delete").forEach(c=>{c.addEventListener("click",x=>{let _=Number(x.currentTarget?.dataset?.deleteIndex),w=$.find(z=>z.index===_);w&&this._deleteTimer(w)})});let u=this.shadowRoot.getElementById("timer-add");u&&(u.onclick=()=>this._openTimerDraft());let v=this.shadowRoot.getElementById("timer-start-time");v&&v.addEventListener("change",c=>{this._setTimerDraftField("start_time",c.currentTarget.value)});let h=this.shadowRoot.getElementById("timer-duration");h&&h.addEventListener("change",c=>{this._setTimerDraftField("duration_minutes",c.currentTarget.value)});let S=this.shadowRoot.getElementById("timer-enabled");S&&S.addEventListener("change",c=>{this._setTimerDraftField("enabled",c.currentTarget.checked)}),this.shadowRoot.querySelectorAll(".timer-day").forEach(c=>{c.addEventListener("click",x=>{let _=x.currentTarget?.dataset?.day;_&&this._toggleTimerDraftDay(_)})});let X=this.shadowRoot.getElementById("timer-cancel");X&&(X.onclick=()=>this._closeTimerDraft());let Y=this.shadowRoot.getElementById("timer-save-new");Y&&(Y.onclick=()=>this._saveNewTimer())}}getCardSize(){return 4}},B=class extends HTMLElement{setConfig(e){this._config={...e},this._render()}set hass(e){this._hass=e,this._suggestionsLoaded||(this._suggestionsLoaded=!0,this._loadSuggestions()),this._render()}connectedCallback(){this.shadowRoot||this.attachShadow({mode:"open"}),this._render()}async _loadSuggestions(){if(this._hass){try{let[e,t]=await Promise.all([this._hass.callWS({type:"config/entity_registry/list"}),this._hass.callWS({type:"config/device_registry/list"})]),i=e.filter(r=>r.platform==="webastoconnect"&&!r.hidden_by),n=i.map(r=>r.entity_id),d=new Set(i.map(r=>r.device_id).filter(Boolean));this._deviceSuggestions=t.filter(r=>d.has(r.id)).map(r=>({id:r.id,name:r.name_by_user||r.name||r.id})).sort((r,k)=>r.name.localeCompare(k.name)),this._entitySuggestions=[...new Set(n)].sort()}catch{let t=Object.keys(this._hass.states||{}).filter(i=>i.includes("webasto"));this._entitySuggestions=[...new Set(t)].sort(),this._deviceSuggestions=[]}this._render()}}_datalistOptions(e){return(this._entitySuggestions||[]).filter(i=>e.includes(i.split(".")[0])).map(i=>`<option value="${s(i)}"></option>`).join("")}_handleInput(e){let t=e.target?.dataset?.field;if(!t)return;let i=String(e.target.value||"").trim(),n={...this._config||{}};i===""?delete n[t]:n[t]=i,this._config=n,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:n},bubbles:!0,composed:!0}))}_render(){if(!this.shadowRoot)return;let e=this._config||{},t=['<option value="">Select device automatically</option>',...(this._deviceSuggestions||[]).map(i=>`<option value="${s(i.id)}"${e.device_id===i.id?" selected":""}>${s(i.name)}</option>`)].join("");this.shadowRoot.innerHTML=`
       <style>
         :host {
           display: block;
@@ -495,31 +617,31 @@ var H={card:{ui:{geo_fence:"Geo-fence",mode:"Modus",timers:"Timere",map:"Kort",h
           </select>
         </label>
         <label>Main output entity
-          <input data-field="main_output_entity" list="webasto-options-switch" value="${r(e.main_output_entity)}" placeholder="switch.webasto_main_output" />
+          <input data-field="main_output_entity" list="webasto-options-switch" value="${s(e.main_output_entity)}" placeholder="switch.webasto_main_output" />
         </label>
         <label>Ventilation mode entity
-          <input data-field="ventilation_mode_entity" list="webasto-options-switch" value="${r(e.ventilation_mode_entity)}" placeholder="switch.webasto_ventilation_mode" />
+          <input data-field="ventilation_mode_entity" list="webasto-options-switch" value="${s(e.ventilation_mode_entity)}" placeholder="switch.webasto_ventilation_mode" />
         </label>
         <label>Connected entity
-          <input data-field="connected_entity" list="webasto-options-binary-sensor" value="${r(e.connected_entity)}" placeholder="binary_sensor.webasto_connected" />
+          <input data-field="connected_entity" list="webasto-options-binary-sensor" value="${s(e.connected_entity)}" placeholder="binary_sensor.webasto_connected" />
         </label>
         <label>Timer sensor entity
-          <input data-field="next_timer_entity" list="webasto-options-sensor" value="${r(e.next_timer_entity)}" placeholder="sensor.webasto_next_start" />
+          <input data-field="next_timer_entity" list="webasto-options-sensor" value="${s(e.next_timer_entity)}" placeholder="sensor.webasto_next_start" />
         </label>
         <label>End-time sensor entity
-          <input data-field="end_time_entity" list="webasto-options-sensor" value="${r(e.end_time_entity)}" placeholder="sensor.webasto_main_output_end_time" />
+          <input data-field="end_time_entity" list="webasto-options-sensor" value="${s(e.end_time_entity)}" placeholder="sensor.webasto_main_output_end_time" />
         </label>
         <label>Temperature entity
-          <input data-field="temperature_entity" list="webasto-options-sensor" value="${r(e.temperature_entity)}" placeholder="sensor.webasto_temperature" />
+          <input data-field="temperature_entity" list="webasto-options-sensor" value="${s(e.temperature_entity)}" placeholder="sensor.webasto_temperature" />
         </label>
         <label>Battery entity
-          <input data-field="battery_entity" list="webasto-options-sensor" value="${r(e.battery_entity)}" placeholder="sensor.webasto_battery_voltage" />
+          <input data-field="battery_entity" list="webasto-options-sensor" value="${s(e.battery_entity)}" placeholder="sensor.webasto_battery_voltage" />
         </label>
         <label>Location entity
-          <input data-field="location_entity" list="webasto-options-location" value="${r(e.location_entity)}" placeholder="device_tracker.webasto_location" />
+          <input data-field="location_entity" list="webasto-options-location" value="${s(e.location_entity)}" placeholder="device_tracker.webasto_location" />
         </label>
         <label>Center icon
-          <input data-field="center_icon" value="${r(e.center_icon)}" placeholder="mdi:car-defrost-rear" />
+          <input data-field="center_icon" value="${s(e.center_icon)}" placeholder="mdi:car-defrost-rear" />
         </label>
         <div class="hint">Pick a device to auto-resolve entities. Manual entity fields override auto-detection.</div>
       </div>
@@ -527,4 +649,4 @@ var H={card:{ui:{geo_fence:"Geo-fence",mode:"Modus",timers:"Timere",map:"Kort",h
       <datalist id="webasto-options-binary-sensor">${this._datalistOptions(["binary_sensor"])}</datalist>
       <datalist id="webasto-options-sensor">${this._datalistOptions(["sensor"])}</datalist>
       <datalist id="webasto-options-location">${this._datalistOptions(["sensor","device_tracker"])}</datalist>
-    `,this.shadowRoot.querySelectorAll("input, select").forEach(i=>{i.addEventListener("change",o=>this._handleInput(o))})}};customElements.get("webasto-connect-card")||customElements.define("webasto-connect-card",q);customElements.get("webasto-connect-card-editor")||customElements.define("webasto-connect-card-editor",z);window.customCards=window.customCards||[];window.customCards.push({type:"webasto-connect-card",name:"Webasto Connect Card",description:"Webasto Connect card with center toggle for main output",preview:!0});
+    `,this.shadowRoot.querySelectorAll("input, select").forEach(i=>{i.addEventListener("change",n=>this._handleInput(n))})}};customElements.get("webasto-connect-card")||customElements.define("webasto-connect-card",A);customElements.get("webasto-connect-card-editor")||customElements.define("webasto-connect-card-editor",B);window.customCards=window.customCards||[];window.customCards.push({type:"webasto-connect-card",name:"Webasto Connect Card",description:"Webasto Connect card with center toggle for main output",preview:!0});

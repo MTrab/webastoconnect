@@ -302,7 +302,71 @@ class WebastoConnectCard extends HTMLElement {
 
   _closeTimersPopup() {
     this._timersPopupOpen = false;
+    this._timerDraftOpen = false;
+    this._timerDraft = undefined;
     this._render();
+  }
+
+  _defaultTimerDraft() {
+    return {
+      start_time: "07:00",
+      duration_minutes: "30",
+      enabled: true,
+      repeat_days: [],
+    };
+  }
+
+  _openTimerDraft() {
+    this._timerDraftOpen = true;
+    this._timerDraft = this._defaultTimerDraft();
+    this._render();
+  }
+
+  _closeTimerDraft() {
+    this._timerDraftOpen = false;
+    this._timerDraft = undefined;
+    this._render();
+  }
+
+  _setTimerDraftField(field, value) {
+    const current = this._timerDraft || this._defaultTimerDraft();
+    this._timerDraft = {
+      ...current,
+      [field]: value,
+    };
+    this._render();
+  }
+
+  _toggleTimerDraftDay(day) {
+    const current = this._timerDraft || this._defaultTimerDraft();
+    const days = new Set(current.repeat_days || []);
+    if (days.has(day)) {
+      days.delete(day);
+    } else {
+      days.add(day);
+    }
+    this._timerDraft = {
+      ...current,
+      repeat_days: [...days],
+    };
+    this._render();
+  }
+
+  _saveNewTimer() {
+    const deviceId = this._config?.device_id;
+    const draft = this._timerDraft;
+    if (!this._hass || !deviceId || !draft?.start_time || !draft?.duration_minutes) {
+      return;
+    }
+
+    this._hass.callService("webastoconnect", "create_timer", {
+      device_id: deviceId,
+      start_time: draft.start_time,
+      duration_minutes: Number(draft.duration_minutes),
+      enabled: Boolean(draft.enabled),
+      repeat_days: draft.repeat_days || [],
+    });
+    this._closeTimerDraft();
   }
 
   _resolveMode(ventilationEntity) {
@@ -394,8 +458,46 @@ class WebastoConnectCard extends HTMLElement {
     return localize(this._hass, "card.ui.timer_repeating");
   }
 
+  _formatTimerStart(timer) {
+    const start = Number(timer?.start);
+    if (!Number.isFinite(start) || start < 0) {
+      return "--:--";
+    }
+
+    const utcHour = Math.floor(start / 60) % 24;
+    const utcMinute = start % 60;
+    const now = new Date();
+    const localDate = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        utcHour,
+        utcMinute,
+        0,
+        0
+      )
+    );
+
+    return `${String(localDate.getHours()).padStart(2, "0")}:${String(
+      localDate.getMinutes()
+    ).padStart(2, "0")}`;
+  }
+
   _canManageTimers(deviceId, isConnected) {
     return Boolean(deviceId) && isConnected;
+  }
+
+  _weekdayOptions() {
+    return [
+      ["monday", localize(this._hass, "card.ui.day_monday")],
+      ["tuesday", localize(this._hass, "card.ui.day_tuesday")],
+      ["wednesday", localize(this._hass, "card.ui.day_wednesday")],
+      ["thursday", localize(this._hass, "card.ui.day_thursday")],
+      ["friday", localize(this._hass, "card.ui.day_friday")],
+      ["saturday", localize(this._hass, "card.ui.day_saturday")],
+      ["sunday", localize(this._hass, "card.ui.day_sunday")],
+    ];
   }
 
   _toggleTimerEnabled(timer) {
@@ -518,6 +620,8 @@ class WebastoConnectCard extends HTMLElement {
     const timersAriaDisabled = timersEnabled ? "false" : "true";
     const timersPopup = this._timersPopupOpen && timersEnabled;
     const canManageTimers = this._canManageTimers(this._config?.device_id, isConnected);
+    const timerDraft = this._timerDraft || this._defaultTimerDraft();
+    const timerDraftOpen = this._timerDraftOpen && canManageTimers;
     const closeText = localize(this._hass, "card.ui.close");
 
     this.shadowRoot.innerHTML = `
@@ -861,6 +965,98 @@ class WebastoConnectCard extends HTMLElement {
           font-size: 13px;
           text-align: center;
         }
+        .timer-add-wrap {
+          display: flex;
+          justify-content: center;
+        }
+        .timer-add {
+          border: 0;
+          border-radius: 14px;
+          min-width: 120px;
+          padding: 12px 20px;
+          background: var(--primary-color, #03a9f4);
+          color: var(--text-primary-color, #fff);
+          cursor: pointer;
+          font: inherit;
+          font-weight: 500;
+        }
+        .timer-form {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          border: 1px solid var(--divider-color, rgba(255,255,255,0.12));
+          border-radius: 18px;
+          background: var(--secondary-background-color, #eee);
+          padding: 14px;
+        }
+        .timer-form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+        .timer-form label {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          color: var(--primary-text-color, #111);
+          font-size: 14px;
+        }
+        .timer-form input {
+          font: inherit;
+          color: var(--primary-text-color, #111);
+          background: var(--card-background-color, #fff);
+          border: 1px solid var(--divider-color, #ddd);
+          border-radius: 10px;
+          padding: 10px 12px;
+        }
+        .timer-checkbox {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--primary-text-color, #111);
+          font-size: 14px;
+        }
+        .timer-days {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .timer-day {
+          border: 1px solid var(--divider-color, rgba(255,255,255,0.12));
+          border-radius: 999px;
+          padding: 8px 12px;
+          background: var(--card-background-color, #fff);
+          color: var(--primary-text-color, #111);
+          cursor: pointer;
+          font: inherit;
+        }
+        .timer-day.selected {
+          background: var(--primary-color, #03a9f4);
+          color: var(--text-primary-color, #fff);
+          border-color: var(--primary-color, #03a9f4);
+        }
+        .timer-form-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 8px;
+        }
+        .timer-form-secondary,
+        .timer-form-primary {
+          border: 0;
+          border-radius: 12px;
+          padding: 10px 14px;
+          cursor: pointer;
+          font: inherit;
+          font-weight: 500;
+        }
+        .timer-form-secondary {
+          background: var(--secondary-background-color, #eee);
+          color: var(--primary-text-color, #111);
+        }
+        .timer-form-primary {
+          background: var(--primary-color, #03a9f4);
+          color: var(--text-primary-color, #fff);
+        }
         .map-card-host {
           height: 360px;
           background: var(--card-background-color, #fff);
@@ -943,12 +1139,37 @@ class WebastoConnectCard extends HTMLElement {
             <button class="modal-close" id="timers-modal-close">${closeText}</button>
           </div>
           <div class="timers-modal-body">
+            ${timerDraftOpen ? `
+            <div class="timer-form">
+              <div class="timer-form-grid">
+                <label>${escapeAttr(localize(this._hass, "card.ui.start_time"))}
+                  <input id="timer-start-time" type="time" value="${escapeAttr(timerDraft.start_time)}">
+                </label>
+                <label>${escapeAttr(localize(this._hass, "card.ui.duration_minutes"))}
+                  <input id="timer-duration" type="number" min="1" max="1440" value="${escapeAttr(timerDraft.duration_minutes)}">
+                </label>
+              </div>
+              <label class="timer-checkbox">
+                <input id="timer-enabled" type="checkbox" ${timerDraft.enabled ? "checked" : ""}>
+                <span>${escapeAttr(localize(this._hass, "card.ui.timer_enabled"))}</span>
+              </label>
+              <div class="timer-days">
+                ${this._weekdayOptions().map(([day, label]) => `
+                <button class="timer-day ${(timerDraft.repeat_days || []).includes(day) ? "selected" : ""}" data-day="${day}" type="button">${escapeAttr(label)}</button>
+                `).join("")}
+              </div>
+              <div class="timer-form-actions">
+                <button class="timer-form-secondary" id="timer-cancel" type="button">${escapeAttr(closeText)}</button>
+                <button class="timer-form-primary" id="timer-save-new" type="button">${escapeAttr(localize(this._hass, "card.ui.add_timer"))}</button>
+              </div>
+            </div>
+            ` : ""}
             ${timers.length ? `
             <div class="timers-list">
               ${timers.map((timer) => `
               <div class="timer-row">
                 <div class="timer-main">
-                  <div class="timer-title">${escapeAttr(timer.start_hhmm_utc || "--:--")}</div>
+                  <div class="timer-title">${escapeAttr(this._formatTimerStart(timer))}</div>
                   <div class="timer-meta">${escapeAttr(this._formatTimerRepeat(timer))} · ${timer.enabled ? escapeAttr(localize(this._hass, "card.ui.timer_enabled")) : escapeAttr(localize(this._hass, "card.ui.timer_disabled"))}</div>
                 </div>
                 <div class="timer-actions">
@@ -959,6 +1180,11 @@ class WebastoConnectCard extends HTMLElement {
               `).join("")}
             </div>
             ` : `<div class="timers-empty">${escapeAttr(localize(this._hass, "card.ui.timers_empty"))}</div>`}
+            ${canManageTimers && !timerDraftOpen ? `
+            <div class="timer-add-wrap">
+              <button class="timer-add" id="timer-add" type="button">${escapeAttr(localize(this._hass, "card.ui.add_timer"))}</button>
+            </div>
+            ` : ""}
             <div class="timers-note">${escapeAttr(canManageTimers ? localize(this._hass, "card.ui.timers_manage_note") : localize(this._hass, "card.ui.timers_readonly_note"))}</div>
           </div>
         </div>
@@ -1104,6 +1330,51 @@ class WebastoConnectCard extends HTMLElement {
           }
         });
       });
+
+      const add = this.shadowRoot.getElementById("timer-add");
+      if (add) {
+        add.onclick = () => this._openTimerDraft();
+      }
+
+      const start = this.shadowRoot.getElementById("timer-start-time");
+      if (start) {
+        start.addEventListener("change", (ev) => {
+          this._setTimerDraftField("start_time", ev.currentTarget.value);
+        });
+      }
+
+      const duration = this.shadowRoot.getElementById("timer-duration");
+      if (duration) {
+        duration.addEventListener("change", (ev) => {
+          this._setTimerDraftField("duration_minutes", ev.currentTarget.value);
+        });
+      }
+
+      const enabled = this.shadowRoot.getElementById("timer-enabled");
+      if (enabled) {
+        enabled.addEventListener("change", (ev) => {
+          this._setTimerDraftField("enabled", ev.currentTarget.checked);
+        });
+      }
+
+      this.shadowRoot.querySelectorAll(".timer-day").forEach((button) => {
+        button.addEventListener("click", (ev) => {
+          const day = ev.currentTarget?.dataset?.day;
+          if (day) {
+            this._toggleTimerDraftDay(day);
+          }
+        });
+      });
+
+      const cancel = this.shadowRoot.getElementById("timer-cancel");
+      if (cancel) {
+        cancel.onclick = () => this._closeTimerDraft();
+      }
+
+      const save = this.shadowRoot.getElementById("timer-save-new");
+      if (save) {
+        save.onclick = () => this._saveNewTimer();
+      }
     }
   }
 

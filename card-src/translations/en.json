@@ -22,12 +22,22 @@
       "close": "Close",
       "map_unavailable": "Location is unavailable",
       "timers_empty": "No timers configured",
+      "add_timer": "Add timer",
+      "start_time": "Start time",
+      "duration_minutes": "Duration (min)",
       "timer_enabled": "Enabled",
       "timer_disabled": "Disabled",
       "timer_once": "One time",
       "timer_repeating": "Repeating",
       "timers_manage_note": "Timers shown here belong to the active output only.",
-      "timers_readonly_note": "Timer management requires a connected device and a selected Webasto device."
+      "timers_readonly_note": "Timer management requires a connected device and a selected Webasto device.",
+      "day_monday": "Mon",
+      "day_tuesday": "Tue",
+      "day_wednesday": "Wed",
+      "day_thursday": "Thu",
+      "day_friday": "Fri",
+      "day_saturday": "Sat",
+      "day_sunday": "Sun"
     }
   }
 }
