@@ -5,10 +5,12 @@ from unittest.mock import Mock
 
 from custom_components.webastoconnect.base import (
     WebastoConnectBinarySensorEntityDescription,
+    WebastoConnectNumberEntityDescription,
     WebastoConnectSensorEntityDescription,
     WebastoConnectSwitchEntityDescription,
 )
 from custom_components.webastoconnect.binary_sensor import WebastoConnectBinarySensor
+from custom_components.webastoconnect.number import WebastoConnectNumber
 from custom_components.webastoconnect.sensor import WebastoConnectSensor
 from custom_components.webastoconnect.switch import WebastoConnectSwitch
 
@@ -77,11 +79,83 @@ def test_switch_skips_write_when_state_unchanged() -> None:
     entity._attr_name = "Output"
     entity._attr_is_on = False
     entity._attr_icon = "mdi:radiator-off"
+    entity._attr_available = True
     entity.async_write_ha_state = Mock()
 
     entity._handle_coordinator_update()
 
     entity.async_write_ha_state.assert_not_called()
+
+
+def test_switch_writes_when_device_becomes_disconnected() -> None:
+    """Switch should write state when availability changes to unavailable."""
+    entity = object.__new__(WebastoConnectSwitch)
+    entity._device_id = 1
+    entity._cloud = SimpleNamespace(
+        devices={
+            1: SimpleNamespace(
+                output_main_name="Output",
+                output_main=False,
+                is_ventilation=False,
+                is_connected=False,
+            )
+        }
+    )
+    entity.entity_description = WebastoConnectSwitchEntityDescription(
+        key="main_output",
+        name="Output",
+        value_fn=lambda dev: dev.output_main,
+        name_fn=lambda dev: dev.output_main_name,
+    )
+    entity._attr_name = "Output"
+    entity._attr_is_on = False
+    entity._attr_icon = "mdi:radiator-off"
+    entity._attr_available = True
+    entity.async_write_ha_state = Mock()
+
+    entity._handle_coordinator_update()
+
+    entity.async_write_ha_state.assert_called_once()
+
+
+def test_number_is_unavailable_when_device_disconnected() -> None:
+    """Writable number entities should be unavailable when device disconnects."""
+    entity = object.__new__(WebastoConnectNumber)
+    entity._device_id = 1
+    entity._cloud = SimpleNamespace(
+        devices={1: SimpleNamespace(low_voltage_cutoff=11.5, is_connected=False)}
+    )
+    entity.entity_description = WebastoConnectNumberEntityDescription(
+        key="low_voltage_cutoff",
+        name="Low Voltage Cutoff",
+        value_fn=lambda dev: dev.low_voltage_cutoff,
+    )
+
+    assert entity.available is False
+
+
+def test_switch_is_available_when_connectivity_unknown() -> None:
+    """Switches should stay available unless device is explicitly disconnected."""
+    entity = object.__new__(WebastoConnectSwitch)
+    entity._device_id = 1
+    entity._cloud = SimpleNamespace(
+        devices={
+            1: SimpleNamespace(
+                output_main_name="Output",
+                output_main=False,
+                is_ventilation=False,
+                is_connected=None,
+            )
+        }
+    )
+    entity.entity_description = WebastoConnectSwitchEntityDescription(
+        key="main_output",
+        name="Output",
+        value_fn=lambda dev: dev.output_main,
+        name_fn=lambda dev: dev.output_main_name,
+    )
+
+    assert entity.available is True
 
 
 def test_binary_sensor_skips_write_when_state_unchanged() -> None:
