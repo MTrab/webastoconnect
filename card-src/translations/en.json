@@ -18,6 +18,7 @@
       "output": "Output",
       "toggle_output": "Toggle output",
       "delete": "Delete",
+      "deleting": "Deleting...",
       "save": "Save",
       "close": "Close",
       "map_unavailable": "Location is unavailable",

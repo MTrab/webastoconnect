@@ -18,6 +18,7 @@
       "output": "Output",
       "toggle_output": "Skift output",
       "delete": "Slet",
+      "deleting": "Sletter...",
       "save": "Gem",
       "close": "Luk",
       "map_unavailable": "Lokation er ikke tilgængelig",

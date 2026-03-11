@@ -513,15 +513,27 @@ class WebastoConnectCard extends HTMLElement {
     });
   }
 
-  _deleteTimer(timer) {
+  _deleteTimer(timer, button) {
     const deviceId = this._config?.device_id;
     if (!this._hass || !deviceId) {
       return;
     }
 
-    this._hass.callService("webastoconnect", "delete_timer", {
-      device_id: deviceId,
-      timer_index: timer.index,
+    if (button) {
+      button.disabled = true;
+      button.textContent = localize(this._hass, "card.ui.deleting");
+    }
+
+    Promise.resolve(
+      this._hass.callService("webastoconnect", "delete_timer", {
+        device_id: deviceId,
+        timer_index: timer.index,
+      })
+    ).finally(() => {
+      if (button?.isConnected) {
+        button.disabled = false;
+        button.textContent = localize(this._hass, "card.ui.delete");
+      }
     });
   }
 
@@ -572,7 +584,6 @@ class WebastoConnectCard extends HTMLElement {
     const timers = this._timerItems(nextTimer).filter(
       (timer) => timer.line_code === activeLine
     );
-
     const isMainAvailable = Boolean(main);
     const isOn = isMainAvailable && main.state === "on";
     const ringColor = isConnected && isOn ? "#d33131" : "#c5cfdf";
@@ -1326,7 +1337,7 @@ class WebastoConnectCard extends HTMLElement {
           const index = Number(ev.currentTarget?.dataset?.deleteIndex);
           const timer = timers.find((item) => item.index === index);
           if (timer) {
-            this._deleteTimer(timer);
+            this._deleteTimer(timer, ev.currentTarget);
           }
         });
       });
