@@ -1,0 +1,43 @@
+{
+    "title": "Webasto Connect (ThermoConnect)",
+    "config": {
+        "abort": {
+            "already_configured": "Denne kontoen er allerede konfigurert",
+            "reauth_successful": "Reautentisering vellykket"
+        },
+        "error": {
+            "cannot_connect": "Kan ikke koble til",
+            "invalid_auth": "Ugyldig autentisering"
+        },
+        "step": {
+            "reauth_confirm": {
+                "description": "Logg inn på Webasto Connect-kontoen din på nytt for å fortsette.",
+                "title": "Autentiser Webasto Connect-kontoen på nytt",
+                "data": {
+                    "email": "E-post",
+                    "password": "Passord"
+                }
+            },
+            "user": {
+                "data": {
+                    "email": "E-post",
+                    "password": "Passord"
+                }
+            }
+        }
+    },
+    "options": {
+        "error": {
+            "cannot_connect": "Kan ikke koble til",
+            "invalid_auth": "Ugyldig autentisering"
+        },
+        "step": {
+            "init": {
+                "data": {
+                    "email": "E-post",
+                    "password": "Passord"
+                }
+            }
+        }
+    }
+}
