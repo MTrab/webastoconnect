@@ -122,8 +122,10 @@ async def _async_setup(
             entry.options.get(CONF_EMAIL, entry.data.get(CONF_EMAIL)),
         )
     except UnauthorizedException:
+        await coordinator.cloud.close()
         raise ConfigEntryAuthFailed("Invalid email or password specified") from None
     except (InvalidRequestException, ForbiddenException, InvalidResponseException):
+        await coordinator.cloud.close()
         raise ConfigEntryNotReady("Error connecting to the API - try again later")
 
     if coordinator.cloud.devices:
@@ -145,6 +147,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: WebastoConfigEntry) -> 
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
+        await entry.runtime_data.coordinator.cloud.close()
         entry.runtime_data.update_listener()
         loaded_entries = [
             config_entry
