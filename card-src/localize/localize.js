@@ -2,6 +2,7 @@ import de from "../translations/de.json";
 import cs from "../translations/cs.json";
 import da from "../translations/da.json";
 import en from "../translations/en.json";
+import es from "../translations/es.json";
 import nb from "../translations/nb.json";
 import fr from "../translations/fr.json";
 import fi from "../translations/fi.json";
@@ -12,6 +13,7 @@ const languages = {
   cs,
   da,
   en,
+  es,
   nb,
   fr,
   fi,
