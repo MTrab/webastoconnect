@@ -45,7 +45,8 @@ Then add a Lovelace resource:
 - URL: `/local/webastoconnect/webasto-connect-card.js`
 - Type: `module`
 
-Use the example from `card-src/webasto_connect_card.yaml` and set your own entity IDs.
+Use the example from `card-src/webasto_connect_card.yaml` and select your Webasto device ID in the card editor.
+Manual entity IDs are still supported as overrides when needed.
 
 ## Language / translations
 - The card auto-selects text from Home Assistant language (`hass.language`).

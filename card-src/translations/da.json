@@ -9,7 +9,7 @@
       "inactive": "Ikke aktiv",
       "ending_now": "Slutter nu",
       "left": "tilbage",
-      "main_output_missing": "Vælg Main output entity i kortindstillinger",
+      "main_output_missing": "Vælg en Webasto-enhed eller main output entity i kortindstillinger",
       "output": "Output",
       "toggle_output": "Skift output",
       "close": "Luk",

@@ -15,28 +15,21 @@ class WebastoConnectCard extends HTMLElement {
 
   static getStubConfig() {
     return {
-      main_output_entity: "switch.webasto_main_output",
-      ventilation_mode_entity: "switch.webasto_ventilation_mode",
-      end_time_entity: "sensor.webasto_main_output_end_time",
-      temperature_entity: "sensor.webasto_temperature",
-      battery_entity: "sensor.webasto_battery_voltage",
-      location_entity: "device_tracker.webasto_location",
+      device_id: "",
     };
   }
 
   setConfig(config) {
-    if (!config.main_output_entity) {
-      throw new Error("Missing required config: main_output_entity");
-    }
     this._config = {
-      ventilation_mode_entity: config.ventilation_mode_entity,
-      end_time_entity: config.end_time_entity,
+      ventilation_mode_entity: config?.ventilation_mode_entity,
+      end_time_entity: config?.end_time_entity,
       ...config,
     };
   }
 
   set hass(hass) {
     this._hass = hass;
+    void this._loadRegistryData();
     this._render();
   }
 
@@ -49,6 +42,104 @@ class WebastoConnectCard extends HTMLElement {
 
   _getState(entityId) {
     return entityId ? this._hass?.states?.[entityId] : undefined;
+  }
+
+  async _loadRegistryData() {
+    if (!this._hass || this._registryDataLoaded || this._registryDataLoading) {
+      return;
+    }
+
+    this._registryDataLoading = true;
+    try {
+      const [entityRegistry, deviceRegistry] = await Promise.all([
+        this._hass.callWS({ type: "config/entity_registry/list" }),
+        this._hass.callWS({ type: "config/device_registry/list" }),
+      ]);
+      this._entityRegistry = Array.isArray(entityRegistry) ? entityRegistry : [];
+      this._deviceRegistry = Array.isArray(deviceRegistry) ? deviceRegistry : [];
+      this._registryDataLoaded = true;
+    } catch (_err) {
+      this._entityRegistry = [];
+      this._deviceRegistry = [];
+    } finally {
+      this._registryDataLoading = false;
+      this._render();
+    }
+  }
+
+  _entriesForSelectedDevice() {
+    const deviceId = this._config?.device_id;
+    if (!deviceId || !Array.isArray(this._entityRegistry)) {
+      return [];
+    }
+
+    return this._entityRegistry.filter(
+      (entry) =>
+        entry?.platform === "webastoconnect" &&
+        entry?.device_id === deviceId &&
+        !entry?.hidden_by
+    );
+  }
+
+  _pickEntry(entries, predicate) {
+    return entries.find((entry) => predicate(entry))?.entity_id;
+  }
+
+  _resolveEntities() {
+    const entries = this._entriesForSelectedDevice();
+    const overrides = this._config || {};
+
+    return {
+      main_output_entity:
+        overrides.main_output_entity ||
+        this._pickEntry(
+          entries,
+          (entry) =>
+            entry.entity_id?.startsWith("switch.") &&
+            entry.entity_category == null &&
+            entry.original_name !== "AUX1" &&
+            entry.original_name !== "AUX2"
+        ),
+      ventilation_mode_entity:
+        overrides.ventilation_mode_entity ||
+        this._pickEntry(
+          entries,
+          (entry) =>
+            entry.entity_id?.startsWith("switch.") &&
+            entry.original_name === "Ventilation Mode"
+        ),
+      end_time_entity:
+        overrides.end_time_entity ||
+        this._pickEntry(
+          entries,
+          (entry) =>
+            entry.entity_id?.startsWith("sensor.") &&
+            entry.device_class === "timestamp" &&
+            entry.original_name !== "Next start"
+        ),
+      temperature_entity:
+        overrides.temperature_entity ||
+        this._pickEntry(
+          entries,
+          (entry) =>
+            entry.entity_id?.startsWith("sensor.") &&
+            entry.device_class === "temperature"
+        ),
+      battery_entity:
+        overrides.battery_entity ||
+        this._pickEntry(
+          entries,
+          (entry) =>
+            entry.entity_id?.startsWith("sensor.") &&
+            entry.device_class === "voltage"
+        ),
+      location_entity:
+        overrides.location_entity ||
+        this._pickEntry(
+          entries,
+          (entry) => entry.entity_id?.startsWith("device_tracker.")
+        ),
+    };
   }
 
   _parseEndDate(value) {
@@ -100,7 +191,7 @@ class WebastoConnectCard extends HTMLElement {
   }
 
   _toggleMainOutput() {
-    const entityId = this._config?.main_output_entity;
+    const entityId = this._resolveEntities().main_output_entity;
     if (!this._hass || !entityId || !this._hass.states?.[entityId]) {
       console.warn(
         "[webasto-connect-card] Missing or unavailable main_output_entity:",
@@ -154,7 +245,7 @@ class WebastoConnectCard extends HTMLElement {
   }
 
   _openMapPopup() {
-    const entityId = this._config?.location_entity;
+    const entityId = this._resolveEntities().location_entity;
     const location = this._getState(entityId);
     if (!this._isMapEnabled(entityId, location)) {
       return;
@@ -201,11 +292,12 @@ class WebastoConnectCard extends HTMLElement {
       return;
     }
 
-    const main = this._getState(this._config.main_output_entity);
-    const end = this._getState(this._config.end_time_entity);
-    const temp = this._getState(this._config.temperature_entity);
-    const battery = this._getState(this._config.battery_entity);
-    const location = this._getState(this._config.location_entity);
+    const entities = this._resolveEntities();
+    const main = this._getState(entities.main_output_entity);
+    const end = this._getState(entities.end_time_entity);
+    const temp = this._getState(entities.temperature_entity);
+    const battery = this._getState(entities.battery_entity);
+    const location = this._getState(entities.location_entity);
 
     const isMainAvailable = Boolean(main);
     const isOn = isMainAvailable && main.state === "on";
@@ -226,7 +318,7 @@ class WebastoConnectCard extends HTMLElement {
     const titleTimers = localize(this._hass, "card.ui.timers");
     const titleMap = localize(this._hass, "card.ui.map");
     const toggleLabel = localize(this._hass, "card.ui.toggle_output");
-    const mapEnabled = this._isMapEnabled(this._config.location_entity, location);
+    const mapEnabled = this._isMapEnabled(entities.location_entity, location);
     const mapClass = mapEnabled ? "map-enabled" : "map-disabled";
     const mapTabIndex = mapEnabled ? "0" : "-1";
     const mapAriaDisabled = mapEnabled ? "false" : "true";
@@ -477,7 +569,7 @@ class WebastoConnectCard extends HTMLElement {
     }
 
     if (mapPopup) {
-      void this._renderMapPopup(this._config.location_entity);
+      void this._renderMapPopup(entities.location_entity);
 
       const close = this.shadowRoot.getElementById("map-modal-close");
       if (close) {
@@ -528,19 +620,35 @@ class WebastoConnectCardEditor extends HTMLElement {
     }
 
     try {
-      const registry = await this._hass.callWS({
-        type: "config/entity_registry/list",
-      });
-      const webastoEntities = registry
+      const [entityRegistry, deviceRegistry] = await Promise.all([
+        this._hass.callWS({
+          type: "config/entity_registry/list",
+        }),
+        this._hass.callWS({
+          type: "config/device_registry/list",
+        }),
+      ]);
+      const webastoEntityEntries = entityRegistry
         .filter((entry) => entry.platform === "webastoconnect" && !entry.hidden_by)
-        .map((entry) => entry.entity_id);
+      const webastoEntities = webastoEntityEntries.map((entry) => entry.entity_id);
+      const webastoDeviceIds = new Set(
+        webastoEntityEntries.map((entry) => entry.device_id).filter(Boolean)
+      );
 
+      this._deviceSuggestions = deviceRegistry
+        .filter((device) => webastoDeviceIds.has(device.id))
+        .map((device) => ({
+          id: device.id,
+          name: device.name_by_user || device.name || device.id,
+        }))
+        .sort((left, right) => left.name.localeCompare(right.name));
       this._entitySuggestions = [...new Set(webastoEntities)].sort();
     } catch (_err) {
       const fallback = Object.keys(this._hass.states || {}).filter((entityId) =>
         entityId.includes("webasto")
       );
       this._entitySuggestions = [...new Set(fallback)].sort();
+      this._deviceSuggestions = [];
     }
 
     this._render();
@@ -584,6 +692,15 @@ class WebastoConnectCardEditor extends HTMLElement {
     }
 
     const cfg = this._config || {};
+    const deviceOptions = [
+      '<option value="">Select device automatically</option>',
+      ...((this._deviceSuggestions || []).map(
+        (device) =>
+          `<option value="${escapeAttr(device.id)}"${
+            cfg.device_id === device.id ? " selected" : ""
+          }>${escapeAttr(device.name)}</option>`
+      )),
+    ].join("");
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -602,7 +719,7 @@ class WebastoConnectCardEditor extends HTMLElement {
           flex-direction: column;
           gap: 4px;
         }
-        input {
+        input, select {
           font: inherit;
           color: var(--primary-text-color);
           background: var(--card-background-color);
@@ -617,6 +734,11 @@ class WebastoConnectCardEditor extends HTMLElement {
         }
       </style>
       <div class="grid">
+        <label>Webasto device
+          <select data-field="device_id">
+            ${deviceOptions}
+          </select>
+        </label>
         <label>Main output entity
           <input data-field="main_output_entity" list="webasto-options-switch" value="${escapeAttr(cfg.main_output_entity)}" placeholder="switch.webasto_main_output" />
         </label>
@@ -638,14 +760,14 @@ class WebastoConnectCardEditor extends HTMLElement {
         <label>Center icon
           <input data-field="center_icon" value="${escapeAttr(cfg.center_icon)}" placeholder="mdi:car-defrost-rear" />
         </label>
-        <div class="hint">Suggestions are limited to entities from the Webasto Connect integration.</div>
+        <div class="hint">Pick a device to auto-resolve entities. Manual entity fields override auto-detection.</div>
       </div>
       <datalist id="webasto-options-switch">${this._datalistOptions(["switch"])}</datalist>
       <datalist id="webasto-options-sensor">${this._datalistOptions(["sensor"])}</datalist>
       <datalist id="webasto-options-location">${this._datalistOptions(["sensor", "device_tracker"])}</datalist>
     `;
 
-    this.shadowRoot.querySelectorAll("input").forEach((input) => {
+    this.shadowRoot.querySelectorAll("input, select").forEach((input) => {
       input.addEventListener("change", (ev) => this._handleInput(ev));
     });
   }
