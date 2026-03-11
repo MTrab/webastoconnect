@@ -16,8 +16,6 @@ categories:
 
   - title: '🐛 Bug Fixes'
     labels:
-      - 'fix'
-      - 'bugfix'
       - 'bug'
 
   - title: '🔈 Translations update'
@@ -25,7 +23,8 @@ categories:
       - 'translation'
 
   - title: '🧰 Maintenance'
-    label: 'chore'
+    labels:
+      - 'chore'
 
   - title: '📦 Dependencies'
     labels:
@@ -42,6 +41,7 @@ version-resolver:
     labels:
       - 'patch'
   default: patch
+  
 template: |
   ## Changes
 
@@ -58,3 +58,15 @@ autolabeler:
   - label: 'feature request'
     branch:
       - '/feature\/.+/'
+  - label: 'chore'
+    branch:
+      - '/chore\/.+/'
+  - label: 'translation'
+    branch:
+      - '/translation\/.+/'
+  - label: 'patch'
+    branch:
+      - '/translation\/.+/'
+      - '/fix\/.+/'
+      - '/feature\/.+/'
+      - '/chore\/.+/'
