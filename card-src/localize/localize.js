@@ -1,9 +1,11 @@
 import da from "../translations/da.json";
 import en from "../translations/en.json";
+import nb from "../translations/nb.json";
 
 const languages = {
   da,
   en,
+  nb,
 };
 
 function getNestedTranslation(obj, path) {
