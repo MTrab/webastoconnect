@@ -2,7 +2,8 @@
     "domain": "webastoconnect",
     "name": "Webasto Connect (ThermoConnect)",
     "after_dependencies": [
-        "http"
+        "http",
+        "lovelace"
     ],
     "codeowners": [
         "@MTrab"

@@ -19,6 +19,10 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
       - name: Validate release automation token
         env:
           RELEASE_WORKFLOW_TOKEN: ${{ secrets.RELEASE_WORKFLOW_TOKEN }}
@@ -30,6 +34,11 @@ jobs:
       - name: Update manifest.json version to ${{ github.event.release.tag_name }}
         run: |
           python3 ${{ github.workspace }}/.github/scripts/update_hacs_manifest.py --version ${{ github.event.release.tag_name }} --path /custom_components/webastoconnect/
+      - name: Build Webasto Connect Card
+        run: |
+          cd card-src
+          npm ci
+          npm run build
       - name: Create pull request for manifest update
         id: create_manifest_pr
         uses: peter-evans/create-pull-request@v8
@@ -37,12 +46,14 @@ jobs:
           token: ${{ secrets.RELEASE_WORKFLOW_TOKEN }}
           branch-token: ${{ secrets.RELEASE_WORKFLOW_TOKEN }}
           base: main
-          add-paths: ./custom_components/webastoconnect/manifest.json
-          commit-message: "release: update manifest for ${{ github.event.release.tag_name }}"
+          add-paths: |
+            ./custom_components/webastoconnect/manifest.json
+            ./custom_components/webastoconnect/card/webasto-connect-card.js
+          commit-message: "release: update manifest and card build for ${{ github.event.release.tag_name }}"
           branch: "chore/release-manifest-${{ github.event.release.tag_name }}"
           title: "release: update manifest for ${{ github.event.release.tag_name }}"
           body: |
-            Automated manifest update for `${{ github.event.release.tag_name }}`.
+            Automated manifest and bundled card update for `${{ github.event.release.tag_name }}`.
           labels: |
             skip-changelog
       - name: Verify gh is available

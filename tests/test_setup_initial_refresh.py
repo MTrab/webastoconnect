@@ -11,6 +11,15 @@ from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 import custom_components.webastoconnect as integration
 
 
+def _mock_hass_for_setup() -> SimpleNamespace:
+    """Build a minimal hass mock compatible with integration._async_setup."""
+    return SimpleNamespace(
+        async_add_executor_job=AsyncMock(return_value=(False, None, None)),
+        config=SimpleNamespace(path=lambda *_args, **_kwargs: "/tmp"),
+        data={},
+    )
+
+
 @pytest.mark.asyncio
 async def test_setup_skips_first_refresh_when_connect_hydrates_devices(monkeypatch) -> None:
     """Skip the coordinator first refresh if connect already provided devices."""
@@ -32,12 +41,12 @@ async def test_setup_skips_first_refresh_when_connect_hydrates_devices(monkeypat
     monkeypatch.setattr(
         integration,
         "async_get_integration",
-        AsyncMock(return_value=SimpleNamespace(version="test")),
+        AsyncMock(return_value=SimpleNamespace(version="test", file_path="/tmp")),
     )
     migrate_mock = AsyncMock()
     monkeypatch.setattr(integration, "_async_migrate_unique_ids", migrate_mock)
 
-    hass = SimpleNamespace()
+    hass = _mock_hass_for_setup()
     entry = SimpleNamespace(entry_id="entry-1", data={CONF_EMAIL: "a@b.c"}, options={})
 
     result = await integration._async_setup(hass, entry)
@@ -70,10 +79,10 @@ async def test_setup_runs_first_refresh_when_connect_has_no_devices(monkeypatch)
     monkeypatch.setattr(
         integration,
         "async_get_integration",
-        AsyncMock(return_value=SimpleNamespace(version="test")),
+        AsyncMock(return_value=SimpleNamespace(version="test", file_path="/tmp")),
     )
 
-    hass = SimpleNamespace()
+    hass = _mock_hass_for_setup()
     entry = SimpleNamespace(entry_id="entry-1", data={CONF_EMAIL: "a@b.c"}, options={})
 
     result = await integration._async_setup(hass, entry)
@@ -109,10 +118,10 @@ async def test_setup_closes_client_when_connect_auth_fails(monkeypatch) -> None:
     monkeypatch.setattr(
         integration,
         "async_get_integration",
-        AsyncMock(return_value=SimpleNamespace(version="test")),
+        AsyncMock(return_value=SimpleNamespace(version="test", file_path="/tmp")),
     )
 
-    hass = SimpleNamespace()
+    hass = _mock_hass_for_setup()
     entry = SimpleNamespace(entry_id="entry-1", data={CONF_EMAIL: "a@b.c"}, options={})
 
     with pytest.raises(ConfigEntryAuthFailed):
@@ -145,10 +154,10 @@ async def test_setup_closes_client_when_connect_temporarily_fails(monkeypatch) -
     monkeypatch.setattr(
         integration,
         "async_get_integration",
-        AsyncMock(return_value=SimpleNamespace(version="test")),
+        AsyncMock(return_value=SimpleNamespace(version="test", file_path="/tmp")),
     )
 
-    hass = SimpleNamespace()
+    hass = _mock_hass_for_setup()
     entry = SimpleNamespace(entry_id="entry-1", data={CONF_EMAIL: "a@b.c"}, options={})
 
     with pytest.raises(ConfigEntryNotReady):
