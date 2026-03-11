@@ -313,6 +313,8 @@ class WebastoConnectCard extends HTMLElement {
       duration_minutes: "30",
       enabled: true,
       repeat_days: [],
+      use_location: false,
+      location: null,
     };
   }
 
@@ -352,6 +354,17 @@ class WebastoConnectCard extends HTMLElement {
     this._render();
   }
 
+  _toggleTimerDraftLocation() {
+    const current = this._timerDraft || this._defaultTimerDraft();
+    const useLocation = !current.use_location;
+    this._timerDraft = {
+      ...current,
+      use_location: useLocation,
+      location: useLocation ? current.location : null,
+    };
+    this._render();
+  }
+
   _saveNewTimer() {
     const deviceId = this._config?.device_id;
     const draft = this._timerDraft;
@@ -359,14 +372,49 @@ class WebastoConnectCard extends HTMLElement {
       return;
     }
 
-    this._hass.callService("webastoconnect", "create_timer", {
+    const serviceData = {
       device_id: deviceId,
       start_time: draft.start_time,
       duration_minutes: Number(draft.duration_minutes),
       enabled: Boolean(draft.enabled),
       repeat_days: draft.repeat_days || [],
-    });
+    };
+
+    if (
+      draft.use_location &&
+      draft.location &&
+      typeof draft.location === "object" &&
+      Number.isFinite(Number(draft.location.latitude)) &&
+      Number.isFinite(Number(draft.location.longitude))
+    ) {
+      serviceData.location = {
+        latitude: Number(draft.location.latitude),
+        longitude: Number(draft.location.longitude),
+      };
+    }
+
+    this._hass.callService("webastoconnect", "create_timer", serviceData);
     this._closeTimerDraft();
+  }
+
+  _setupTimerLocationSelector() {
+    if (!this._hass || !this._timerDraftOpen) {
+      return;
+    }
+
+    const selector = this.shadowRoot?.getElementById("timer-location");
+    if (!selector) {
+      return;
+    }
+
+    selector.hass = this._hass;
+    selector.selector = {
+      location: {},
+    };
+    selector.value = this._timerDraft?.location ?? null;
+    selector.addEventListener("value-changed", (ev) => {
+      this._setTimerDraftField("location", ev.detail?.value ?? null);
+    });
   }
 
   _resolveMode(ventilationEntity) {
@@ -1027,6 +1075,28 @@ class WebastoConnectCard extends HTMLElement {
           color: var(--primary-text-color, #111);
           font-size: 14px;
         }
+        .timer-location-field {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          color: var(--primary-text-color, #111);
+          font-size: 14px;
+        }
+        .timer-location-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--primary-text-color, #111);
+          font-size: 14px;
+        }
+        .timer-location-help {
+          color: var(--secondary-text-color, #666);
+          font-size: 12px;
+          margin-top: -4px;
+        }
+        .timer-location-field ha-selector {
+          display: block;
+        }
         .timer-days {
           display: flex;
           flex-wrap: wrap;
@@ -1160,6 +1230,16 @@ class WebastoConnectCard extends HTMLElement {
                   <input id="timer-duration" type="number" min="1" max="1440" value="${escapeAttr(timerDraft.duration_minutes)}">
                 </label>
               </div>
+              <label class="timer-location-toggle">
+                <input id="timer-use-location" type="checkbox" ${timerDraft.use_location ? "checked" : ""}>
+                <span>${escapeAttr(localize(this._hass, "card.ui.timer_use_location"))}</span>
+              </label>
+              <div class="timer-location-help">${escapeAttr(localize(this._hass, "card.ui.timer_location_optional"))}</div>
+              ${timerDraft.use_location ? `
+              <label class="timer-location-field">${escapeAttr(localize(this._hass, "card.ui.location"))}
+                <ha-selector id="timer-location"></ha-selector>
+              </label>
+              ` : ""}
               <label class="timer-checkbox">
                 <input id="timer-enabled" type="checkbox" ${timerDraft.enabled ? "checked" : ""}>
                 <span>${escapeAttr(localize(this._hass, "card.ui.timer_enabled"))}</span>
@@ -1367,6 +1447,15 @@ class WebastoConnectCard extends HTMLElement {
           this._setTimerDraftField("enabled", ev.currentTarget.checked);
         });
       }
+
+      const useLocation = this.shadowRoot.getElementById("timer-use-location");
+      if (useLocation) {
+        useLocation.addEventListener("change", () => {
+          this._toggleTimerDraftLocation();
+        });
+      }
+
+      this._setupTimerLocationSelector();
 
       this.shadowRoot.querySelectorAll(".timer-day").forEach((button) => {
         button.addEventListener("click", (ev) => {
