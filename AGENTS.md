@@ -136,6 +136,8 @@ refactor/<name>
 chore/<name>
 ```
 
+Unless the user explicitly requests another base branch, all new branches MUST be created from `main`.
+
 Each PR must include:
 
 - A clear description of changes
