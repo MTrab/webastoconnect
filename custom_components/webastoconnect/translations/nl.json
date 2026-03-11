@@ -1,0 +1,43 @@
+{
+    "title": "Webasto Connect (ThermoConnect)",
+    "config": {
+        "abort": {
+            "already_configured": "Dit account is al geconfigureerd",
+            "reauth_successful": "Opnieuw verifiëren is geslaagd"
+        },
+        "error": {
+            "cannot_connect": "Kan geen verbinding maken",
+            "invalid_auth": "Ongeldige authenticatie"
+        },
+        "step": {
+            "reauth_confirm": {
+                "description": "Log opnieuw in op je Webasto Connect-account om door te gaan.",
+                "title": "Webasto Connect-account opnieuw verifiëren",
+                "data": {
+                    "email": "E-mail",
+                    "password": "Wachtwoord"
+                }
+            },
+            "user": {
+                "data": {
+                    "email": "E-mail",
+                    "password": "Wachtwoord"
+                }
+            }
+        }
+    },
+    "options": {
+        "error": {
+            "cannot_connect": "Kan geen verbinding maken",
+            "invalid_auth": "Ongeldige authenticatie"
+        },
+        "step": {
+            "init": {
+                "data": {
+                    "email": "E-mail",
+                    "password": "Wachtwoord"
+                }
+            }
+        }
+    }
+}
