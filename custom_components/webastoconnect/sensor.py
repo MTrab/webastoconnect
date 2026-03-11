@@ -21,7 +21,7 @@ from .base import WebastoBaseEntity, WebastoConnectSensorEntityDescription
 LOGGER = logging.getLogger(__name__)
 MAIN_OUTPUT_LINES = {"OUTH", "OUTV"}
 TIMER_LINES = {"OUTH", "OUTV"}
-WEEKDAY_BITMASK = [64, 1, 2, 4, 8, 16, 32]  # Monday..Sunday (confirmed in pywebasto)
+WEEKDAY_BITMASK = [1, 2, 4, 8, 16, 32, 64]  # Monday..Sunday
 
 
 def _main_output_end_time(webasto) -> datetime | None:
