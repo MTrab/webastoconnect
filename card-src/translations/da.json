@@ -10,6 +10,8 @@
       "mode_unavailable": "Utilgængelig",
       "active": "Aktiv",
       "inactive": "Ikke aktiv",
+      "offline_title": "Offline",
+      "offline_label": "ThermoConnect er ikke tilgængelig\n(intet netværk)",
       "ending_now": "Slutter nu",
       "left": "tilbage",
       "main_output_missing": "Vælg en Webasto-enhed eller main output entity i kortindstillinger",

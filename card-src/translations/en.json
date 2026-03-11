@@ -10,6 +10,8 @@
       "mode_unavailable": "Unavailable",
       "active": "Active",
       "inactive": "Inactive",
+      "offline_title": "Offline",
+      "offline_label": "ThermoConnect is unavailable\n(no network)",
       "ending_now": "Ending now",
       "left": "left",
       "main_output_missing": "Select a Webasto device or main output entity in card settings",

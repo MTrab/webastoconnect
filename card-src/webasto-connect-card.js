@@ -25,6 +25,7 @@ class WebastoConnectCard extends HTMLElement {
 
   setConfig(config) {
     this._config = {
+      connected_entity: config?.connected_entity,
       ventilation_mode_entity: config?.ventilation_mode_entity,
       end_time_entity: config?.end_time_entity,
       ...config,
@@ -141,6 +142,14 @@ class WebastoConnectCard extends HTMLElement {
               entry.original_name === "Battery"
             )
         ),
+      connected_entity:
+        overrides.connected_entity ||
+        this._pickEntry(
+          entries,
+          (entry) =>
+            entry.entity_id?.startsWith("binary_sensor.") &&
+            entry.original_name === "Connected"
+        ),
       location_entity:
         overrides.location_entity ||
         this._pickEntry(
@@ -148,6 +157,16 @@ class WebastoConnectCard extends HTMLElement {
           (entry) => entry.entity_id?.startsWith("device_tracker.")
         ),
     };
+  }
+
+  _isConnected(entity) {
+    if (!entity) {
+      return true;
+    }
+    if (entity.state === "off") {
+      return false;
+    }
+    return true;
   }
 
   _parseEndDate(value) {
@@ -370,34 +389,46 @@ class WebastoConnectCard extends HTMLElement {
     const battery = this._getState(entities.battery_entity);
     const location = this._getState(entities.location_entity);
     const ventilationMode = this._getState(entities.ventilation_mode_entity);
+    const connected = this._getState(entities.connected_entity);
+    const isConnected = this._isConnected(connected);
 
     const isMainAvailable = Boolean(main);
     const isOn = isMainAvailable && main.state === "on";
-    const ringColor = isOn ? "#d33131" : "#c5cfdf";
-    const outputName = this._computeOutputName(main);
-    const label = isMainAvailable
-      ? this._computeLabel(main, end)
-      : localize(this._hass, "card.ui.main_output_missing");
-    const tempText = this._stateWithUnit(temp);
-    const batteryText = this._stateWithUnit(battery);
+    const ringColor = isConnected && isOn ? "#d33131" : "#c5cfdf";
+    const outputName = isConnected
+      ? this._computeOutputName(main)
+      : localize(this._hass, "card.ui.offline_title");
+    const label = isConnected
+      ? (
+        isMainAvailable
+          ? this._computeLabel(main, end)
+          : localize(this._hass, "card.ui.main_output_missing")
+      )
+      : localize(this._hass, "card.ui.offline_label");
+    const tempText = isConnected ? this._stateWithUnit(temp) : "--";
+    const batteryText = isConnected ? this._stateWithUnit(battery) : "--";
     const locationText = this._locationText(location);
     const icon =
-      this._config.center_icon ||
-      main?.attributes?.icon ||
-      "mdi:car-defrost-rear";
+      isConnected
+        ? (
+          this._config.center_icon ||
+          main?.attributes?.icon ||
+          "mdi:car-defrost-rear"
+        )
+        : "mdi:signal-off";
     const titleGeoFence = "";
     const titleMode = localize(this._hass, "card.ui.mode");
     const titleTimers = localize(this._hass, "card.ui.timers");
     const titleMap = localize(this._hass, "card.ui.map");
     const toggleLabel = localize(this._hass, "card.ui.toggle_output");
-    const modeEnabled = this._isModeSelectable(entities.ventilation_mode_entity);
+    const modeEnabled = isConnected && this._isModeSelectable(entities.ventilation_mode_entity);
     const modeClass = modeEnabled ? "mode-enabled" : "mode-disabled";
     const modeTabIndex = modeEnabled ? "0" : "-1";
     const modeAriaDisabled = modeEnabled ? "false" : "true";
     const modePopup = this._modePopupOpen && modeEnabled;
     const selectedMode = this._modeDraft || this._resolveMode(ventilationMode) || "heating";
     const saveText = localize(this._hass, "card.ui.save");
-    const mapEnabled = this._isMapEnabled(entities.location_entity, location);
+    const mapEnabled = isConnected && this._isMapEnabled(entities.location_entity, location);
     const mapClass = mapEnabled ? "map-enabled" : "map-disabled";
     const mapTabIndex = mapEnabled ? "0" : "-1";
     const mapAriaDisabled = mapEnabled ? "false" : "true";
@@ -506,6 +537,10 @@ class WebastoConnectCard extends HTMLElement {
           user-select: none;
           transition: border-color 150ms ease;
         }
+        .center-wrap.offline {
+          background: #d0d0d0;
+          cursor: default;
+        }
         .icon {
           color: #2a4677;
           margin-bottom: 10px;
@@ -523,6 +558,16 @@ class WebastoConnectCard extends HTMLElement {
           margin-top: 8px;
           text-align: center;
           max-width: 240px;
+        }
+        .offline-copy {
+          max-width: 220px;
+          text-align: center;
+          color: #2d4468;
+          font-size: 24px;
+          line-height: 1.25;
+          font-weight: 500;
+          margin-bottom: 18px;
+          white-space: pre-line;
         }
         .meta {
           background: #ffffff;
@@ -689,10 +734,16 @@ class WebastoConnectCard extends HTMLElement {
           <div class="q br ${mapClass}" id="map-action" role="button" tabindex="${mapTabIndex}" aria-disabled="${mapAriaDisabled}">${titleMap}</div>
           <div class="divider-v"></div>
           <div class="divider-h"></div>
-          <div class="center-wrap" id="center-toggle" role="button" tabindex="0" aria-label="${toggleLabel}">
+          <div class="center-wrap ${isConnected ? "" : "offline"}" id="center-toggle" role="button" tabindex="0" aria-label="${toggleLabel}">
+            ${isConnected ? `
             <ha-icon class="icon" icon="${icon}" style="--mdc-icon-size: 96px;"></ha-icon>
             <div class="name">${outputName}</div>
             <div class="label">${label}</div>
+            ` : `
+            <div class="offline-copy">${label}</div>
+            <ha-icon class="icon" icon="${icon}" style="--mdc-icon-size: 72px;"></ha-icon>
+            <div class="name">${outputName}</div>
+            `}
           </div>
         </ha-card>
         <div class="meta">
@@ -742,7 +793,7 @@ class WebastoConnectCard extends HTMLElement {
     `;
 
     const center = this.shadowRoot.getElementById("center-toggle");
-    if (center) {
+    if (center && isConnected) {
       center.onclick = () => this._toggleMainOutput();
       center.onkeydown = (ev) => {
         if (ev.key === "Enter" || ev.key === " ") {
@@ -982,6 +1033,9 @@ class WebastoConnectCardEditor extends HTMLElement {
         <label>Ventilation mode entity
           <input data-field="ventilation_mode_entity" list="webasto-options-switch" value="${escapeAttr(cfg.ventilation_mode_entity)}" placeholder="switch.webasto_ventilation_mode" />
         </label>
+        <label>Connected entity
+          <input data-field="connected_entity" list="webasto-options-binary-sensor" value="${escapeAttr(cfg.connected_entity)}" placeholder="binary_sensor.webasto_connected" />
+        </label>
         <label>End-time sensor entity
           <input data-field="end_time_entity" list="webasto-options-sensor" value="${escapeAttr(cfg.end_time_entity)}" placeholder="sensor.webasto_main_output_end_time" />
         </label>
@@ -1000,6 +1054,7 @@ class WebastoConnectCardEditor extends HTMLElement {
         <div class="hint">Pick a device to auto-resolve entities. Manual entity fields override auto-detection.</div>
       </div>
       <datalist id="webasto-options-switch">${this._datalistOptions(["switch"])}</datalist>
+      <datalist id="webasto-options-binary-sensor">${this._datalistOptions(["binary_sensor"])}</datalist>
       <datalist id="webasto-options-sensor">${this._datalistOptions(["sensor"])}</datalist>
       <datalist id="webasto-options-location">${this._datalistOptions(["sensor", "device_tracker"])}</datalist>
     `;
