@@ -4,7 +4,10 @@ import logging
 from typing import cast
 
 from homeassistant.components import binary_sensor
-from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
 from homeassistant.util import slugify as util_slugify
@@ -16,6 +19,15 @@ from .base import WebastoBaseEntity, WebastoConnectBinarySensorEntityDescription
 LOGGER = logging.getLogger(__name__)
 
 BINARY_SENSORS = [
+    WebastoConnectBinarySensorEntityDescription(
+        key="is_connected",
+        name="Connected",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda webasto: cast(bool | None, webasto.is_connected),
+        icon_on="mdi:wifi",
+        icon_off="mdi:wifi-off",
+    ),
     WebastoConnectBinarySensorEntityDescription(
         key="allow_location",
         name="Allow Location Services",
@@ -69,7 +81,7 @@ class WebastoConnectBinarySensor(
             )
         )
 
-        self._attr_is_on = self.entity_description.value_fn( # type: ignore
+        self._attr_is_on = self.entity_description.value_fn(  # type: ignore
             self._cloud.devices[self._device_id]
         )
         self._attr_icon = (
@@ -81,12 +93,15 @@ class WebastoConnectBinarySensor(
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self._attr_is_on = self.entity_description.value_fn(  # type: ignore
+        new_is_on = self.entity_description.value_fn(  # type: ignore
             self._cloud.devices[self._device_id]
         )
-        self._attr_icon = (
+        new_icon = (
             self.entity_description.icon_on  # type: ignore
-            if self._attr_is_on
+            if new_is_on
             else self.entity_description.icon_off  # type: ignore
         )
-        self.async_write_ha_state()
+        if new_is_on != self._attr_is_on or new_icon != self._attr_icon:
+            self._attr_is_on = new_is_on
+            self._attr_icon = new_icon
+            self.async_write_ha_state()

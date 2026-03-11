@@ -5,6 +5,10 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+  pull-requests: write
+
 env:
   COMPONENT_DIR: webastoconnect
 
@@ -19,6 +23,14 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "20"
+      - name: Validate release automation token
+        env:
+          RELEASE_WORKFLOW_TOKEN: ${{ secrets.RELEASE_WORKFLOW_TOKEN }}
+        run: |
+          if [ -z "$RELEASE_WORKFLOW_TOKEN" ]; then
+            echo "::error::Missing secret RELEASE_WORKFLOW_TOKEN. Configure a PAT (repo scope) so required checks can run on the manifest PR."
+            exit 1
+          fi
       - name: Update manifest.json version to ${{ github.event.release.tag_name }}
         run: |
           python3 ${{ github.workspace }}/.github/scripts/update_hacs_manifest.py --version ${{ github.event.release.tag_name }} --path /custom_components/webastoconnect/
@@ -27,14 +39,55 @@ jobs:
           cd card-src
           npm ci
           npm run build
-      - name: Commit manifest and card build update
+      - name: Create pull request for manifest update
+        id: create_manifest_pr
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.RELEASE_WORKFLOW_TOKEN }}
+          branch-token: ${{ secrets.RELEASE_WORKFLOW_TOKEN }}
+          base: main
+          add-paths: |
+            ./custom_components/webastoconnect/manifest.json
+            ./custom_components/webastoconnect/card/webasto-connect-card.js
+          commit-message: "release: update manifest and card build for ${{ github.event.release.tag_name }}"
+          branch: "chore/release-manifest-${{ github.event.release.tag_name }}"
+          title: "release: update manifest for ${{ github.event.release.tag_name }}"
+          body: |
+            Automated manifest and bundled card update for `${{ github.event.release.tag_name }}`.
+          labels: |
+            skip-changelog
+      - name: Verify gh is available
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add ./custom_components/webastoconnect/manifest.json ./custom_components/webastoconnect/card/webasto-connect-card.js
-          git diff --cached --quiet && echo "No changes to commit" && exit 0
-          git commit -m "release: update manifest and card build"
-          git push origin HEAD:main
+          gh --version
+      - name: Wait for manifest PR checks and merge
+        id: wait_manifest_pr_merge
+        if: ${{ steps.create_manifest_pr.outputs.pull-request-number != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_WORKFLOW_TOKEN }}
+        run: |
+          set -euo pipefail
+          pr_number="${{ steps.create_manifest_pr.outputs.pull-request-number }}"
+          repo="${{ github.repository }}"
+          max_attempts=80
+          sleep_seconds=15
+
+          for attempt in $(seq 1 "$max_attempts"); do
+            if gh pr checks "$pr_number" --repo "$repo" --required; then
+              gh pr merge "$pr_number" --repo "$repo" --squash --delete-branch
+              merge_sha="$(gh pr view "$pr_number" --repo "$repo" --json mergeCommit -q '.mergeCommit.oid')"
+              echo "merge_sha=$merge_sha" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep "$sleep_seconds"
+          done
+
+          echo "Timed out waiting for required checks on manifest PR #$pr_number."
+          exit 1
+      - name: Checkout merged commit
+        if: ${{ steps.wait_manifest_pr_merge.outputs.merge_sha != '' }}
+        run: |
+          git fetch origin main
+          git checkout --force "${{ steps.wait_manifest_pr_merge.outputs.merge_sha }}"
       - name: Create zip
         run: |
           cd custom_components/webastoconnect

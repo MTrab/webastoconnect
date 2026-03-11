@@ -13,7 +13,7 @@ from homeassistant.components.lovelace.const import (
     LOVELACE_DATA,
     MODE_STORAGE,
 )
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import CONF_EMAIL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
@@ -22,9 +22,16 @@ from homeassistant.loader import async_get_integration
 from homeassistant.util import slugify as util_slugify
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
+try:
+    from pywebasto.exceptions import ForbiddenException, InvalidResponseException
+except ImportError:
+    ForbiddenException = InvalidRequestException
+    InvalidResponseException = InvalidRequestException
+
 from .api import WebastoConnectUpdateCoordinator
 from .card_install import ensure_card_installed
 from .const import CARD_FILENAME, CARD_WWW_SUBDIR, DOMAIN, PLATFORMS, STARTUP
+from .services import async_register_services, async_unregister_services
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,6 +50,7 @@ WebastoConfigEntry: TypeAlias = ConfigEntry[WebastoRuntimeData]
 async def async_setup_entry(hass: HomeAssistant, entry: WebastoConfigEntry) -> bool:
     """Set up cloud API connector from a config entry."""
     coordinator = await _async_setup(hass, entry)
+    async_register_services(hass)
     update_listener = entry.add_update_listener(async_reload_entry)
     entry.runtime_data = WebastoRuntimeData(
         coordinator=coordinator,
@@ -149,8 +157,10 @@ async def _async_setup(
             entry.options.get(CONF_EMAIL, entry.data.get(CONF_EMAIL)),
         )
     except UnauthorizedException:
+        await coordinator.cloud.close()
         raise ConfigEntryAuthFailed("Invalid email or password specified") from None
-    except InvalidRequestException:
+    except (InvalidRequestException, ForbiddenException, InvalidResponseException):
+        await coordinator.cloud.close()
         raise ConfigEntryNotReady("Error connecting to the API - try again later")
 
     if coordinator.cloud.devices:
@@ -223,7 +233,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: WebastoConfigEntry) -> 
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
+        await entry.runtime_data.coordinator.cloud.close()
         entry.runtime_data.update_listener()
+        loaded_entries = [
+            config_entry
+            for config_entry in hass.config_entries.async_entries(DOMAIN)
+            if config_entry.state is ConfigEntryState.LOADED
+            and config_entry.entry_id != entry.entry_id
+        ]
+        if not loaded_entries:
+            async_unregister_services(hass)
     return unload_ok
 
 

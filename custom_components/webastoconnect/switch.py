@@ -100,8 +100,11 @@ class WebastoConnectSwitch(WebastoBaseEntity, SwitchEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
+        previous_state = (self._attr_name, self._attr_is_on, self._attr_icon)
         self._handle_states()
-        self.async_write_ha_state()
+        current_state = (self._attr_name, self._attr_is_on, self._attr_icon)
+        if current_state != previous_state:
+            self.async_write_ha_state()
 
     def _handle_states(self) -> None:
         """Handle the switch states."""
