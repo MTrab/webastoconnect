@@ -1,0 +1,43 @@
+{
+    "title": "Webasto Connect (ThermoConnect)",
+    "config": {
+        "abort": {
+            "already_configured": "Dieses Konto ist bereits eingerichtet",
+            "reauth_successful": "Erneute Authentifizierung erfolgreich"
+        },
+        "error": {
+            "cannot_connect": "Verbindung nicht möglich",
+            "invalid_auth": "Ungültige Anmeldedaten"
+        },
+        "step": {
+            "reauth_confirm": {
+                "description": "Bitte authentifiziere dein Webasto-Connect-Konto erneut, um fortzufahren.",
+                "title": "Webasto-Connect-Konto erneut authentifizieren",
+                "data": {
+                    "email": "E-Mail",
+                    "password": "Passwort"
+                }
+            },
+            "user": {
+                "data": {
+                    "email": "E-Mail",
+                    "password": "Passwort"
+                }
+            }
+        }
+    },
+    "options": {
+        "error": {
+            "cannot_connect": "Verbindung nicht möglich",
+            "invalid_auth": "Ungültige Anmeldedaten"
+        },
+        "step": {
+            "init": {
+                "data": {
+                    "email": "E-Mail",
+                    "password": "Passwort"
+                }
+            }
+        }
+    }
+}
