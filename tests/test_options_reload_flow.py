@@ -45,6 +45,7 @@ async def test_async_setup_entry_registers_update_listener(monkeypatch) -> None:
 async def test_async_unload_entry_calls_remove_listener_on_success() -> None:
     """Unload should unsubscribe update listener before removing entry data."""
     remove_listener = Mock()
+    close_mock = AsyncMock()
     services = SimpleNamespace(
         has_service=Mock(return_value=True),
         async_register=Mock(),
@@ -52,7 +53,10 @@ async def test_async_unload_entry_calls_remove_listener_on_success() -> None:
     )
     entry = SimpleNamespace(
         entry_id="entry-1",
-        runtime_data=SimpleNamespace(update_listener=remove_listener),
+        runtime_data=SimpleNamespace(
+            update_listener=remove_listener,
+            coordinator=SimpleNamespace(cloud=SimpleNamespace(close=close_mock)),
+        ),
     )
     hass = SimpleNamespace(
         config_entries=SimpleNamespace(
@@ -65,6 +69,7 @@ async def test_async_unload_entry_calls_remove_listener_on_success() -> None:
     unload_ok = await integration.async_unload_entry(hass, entry)
 
     assert unload_ok is True
+    close_mock.assert_awaited_once()
     remove_listener.assert_called_once()
 
 
@@ -72,6 +77,7 @@ async def test_async_unload_entry_calls_remove_listener_on_success() -> None:
 async def test_options_flow_creates_entry_after_successful_auth(monkeypatch) -> None:
     """Options flow should create entry directly after successful auth."""
     connect_mock = AsyncMock()
+    close_mock = AsyncMock()
 
     class FakeWebasto:
         """Minimal fake Webasto client for options flow tests."""
@@ -82,6 +88,10 @@ async def test_options_flow_creates_entry_after_successful_auth(monkeypatch) -> 
         async def connect(self) -> None:
             """Simulate successful auth."""
             await connect_mock()
+
+        async def close(self) -> None:
+            """Close fake resources."""
+            await close_mock()
 
     monkeypatch.setattr(
         "custom_components.webastoconnect.config_flow.WebastoConnect",
@@ -101,6 +111,7 @@ async def test_options_flow_creates_entry_after_successful_auth(monkeypatch) -> 
     result = await flow.async_step_init({"email": "user@test", "password": "pw"})
 
     connect_mock.assert_awaited_once()
+    close_mock.assert_awaited_once()
     flow.async_create_entry.assert_called_once_with(
         title="user@test", data={"email": "user@test", "password": "pw"}
     )
@@ -110,6 +121,7 @@ async def test_options_flow_creates_entry_after_successful_auth(monkeypatch) -> 
 @pytest.mark.asyncio
 async def test_options_flow_returns_error_on_invalid_auth(monkeypatch) -> None:
     """Invalid auth should return form with invalid_auth error."""
+    close_mock = AsyncMock()
 
     class FakeWebasto:
         """Fake client that always fails auth."""
@@ -120,6 +132,10 @@ async def test_options_flow_returns_error_on_invalid_auth(monkeypatch) -> None:
         async def connect(self) -> None:
             """Simulate auth failure."""
             raise UnauthorizedException("invalid")
+
+        async def close(self) -> None:
+            """Close fake resources."""
+            await close_mock()
 
     monkeypatch.setattr(
         "custom_components.webastoconnect.config_flow.WebastoConnect",
@@ -139,6 +155,7 @@ async def test_options_flow_returns_error_on_invalid_auth(monkeypatch) -> None:
     result = await flow.async_step_init({"email": "user@test", "password": "bad"})
 
     flow.async_show_form.assert_called_once()
+    close_mock.assert_awaited_once()
     assert flow.async_show_form.call_args.kwargs["errors"] == {"base": "invalid_auth"}
     assert result == {"type": "form"}
 
@@ -148,6 +165,7 @@ async def test_options_flow_returns_error_on_connection_validation_failure(
     monkeypatch,
 ) -> None:
     """Connection validation errors should return cannot_connect."""
+    close_mock = AsyncMock()
 
     class FakeWebasto:
         """Fake client that fails to validate connection."""
@@ -158,6 +176,10 @@ async def test_options_flow_returns_error_on_connection_validation_failure(
         async def connect(self) -> None:
             """Simulate API validation failure."""
             raise InvalidRequestException("bad response")
+
+        async def close(self) -> None:
+            """Close fake resources."""
+            await close_mock()
 
     monkeypatch.setattr(
         "custom_components.webastoconnect.config_flow.WebastoConnect",
@@ -175,5 +197,6 @@ async def test_options_flow_returns_error_on_connection_validation_failure(
     result = await flow.async_step_init({"email": "user@test", "password": "bad"})
 
     flow.async_show_form.assert_called_once()
+    close_mock.assert_awaited_once()
     assert flow.async_show_form.call_args.kwargs["errors"] == {"base": "cannot_connect"}
     assert result == {"type": "form"}

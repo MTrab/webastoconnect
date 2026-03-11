@@ -53,10 +53,8 @@ class WebastoConnectConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ):
                 return self.async_abort(reason="already_configured")
 
+            webasto = WebastoConnect(user_input[CONF_EMAIL], user_input[CONF_PASSWORD])
             try:
-                webasto = WebastoConnect(
-                    user_input[CONF_EMAIL], user_input[CONF_PASSWORD]
-                )
                 await webasto.connect()
                 LOGGER.debug("Authorization OK")
             except UnauthorizedException:
@@ -65,6 +63,8 @@ class WebastoConnectConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except (InvalidRequestException, ForbiddenException, InvalidResponseException):
                 LOGGER.debug("Connection validation failed")
                 errors["base"] = "cannot_connect"
+            finally:
+                await webasto.close()
 
             if "base" not in errors:
                 await self.async_set_unique_id(f"{user_input[CONF_EMAIL]}")
@@ -94,10 +94,10 @@ class WebastoConnectConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
+            webasto = WebastoConnect(
+                user_input[CONF_EMAIL], user_input[CONF_PASSWORD]
+            )
             try:
-                webasto = WebastoConnect(
-                    user_input[CONF_EMAIL], user_input[CONF_PASSWORD]
-                )
                 await webasto.connect()
                 LOGGER.debug("Re-authorization OK")
             except UnauthorizedException:
@@ -106,6 +106,8 @@ class WebastoConnectConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except (InvalidRequestException, ForbiddenException, InvalidResponseException):
                 LOGGER.debug("Re-authorization connection validation failed")
                 errors["base"] = "cannot_connect"
+            finally:
+                await webasto.close()
 
             if "base" not in errors:
                 self._async_abort_entries_match({CONF_EMAIL: user_input[CONF_EMAIL]})
@@ -142,10 +144,8 @@ class WebastoConnectOptionsFlow(config_entries.OptionsFlow):
         errors = {}
 
         if user_input is not None:
+            webasto = WebastoConnect(user_input[CONF_EMAIL], user_input[CONF_PASSWORD])
             try:
-                webasto = WebastoConnect(
-                    user_input[CONF_EMAIL], user_input[CONF_PASSWORD]
-                )
                 await webasto.connect()
                 LOGGER.debug("Authorization OK")
             except UnauthorizedException:
@@ -154,6 +154,8 @@ class WebastoConnectOptionsFlow(config_entries.OptionsFlow):
             except (InvalidRequestException, ForbiddenException, InvalidResponseException):
                 LOGGER.debug("Connection validation failed")
                 errors["base"] = "cannot_connect"
+            finally:
+                await webasto.close()
 
             if "base" not in errors:
                 return self.async_create_entry(
