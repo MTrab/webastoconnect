@@ -4,7 +4,10 @@ import logging
 from typing import cast
 
 from homeassistant.components import binary_sensor
-from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
 from homeassistant.util import slugify as util_slugify
@@ -16,6 +19,15 @@ from .base import WebastoBaseEntity, WebastoConnectBinarySensorEntityDescription
 LOGGER = logging.getLogger(__name__)
 
 BINARY_SENSORS = [
+    WebastoConnectBinarySensorEntityDescription(
+        key="is_connected",
+        name="Connected",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda webasto: cast(bool | None, webasto.is_connected),
+        icon_on="mdi:wifi",
+        icon_off="mdi:wifi-off",
+    ),
     WebastoConnectBinarySensorEntityDescription(
         key="allow_location",
         name="Allow Location Services",

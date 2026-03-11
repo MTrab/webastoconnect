@@ -124,3 +124,45 @@ def test_binary_sensor_writes_when_state_changes() -> None:
     entity._handle_coordinator_update()
 
     entity.async_write_ha_state.assert_called_once()
+
+
+def test_connected_binary_sensor_skips_write_when_state_unchanged() -> None:
+    """Connectivity binary sensor should avoid writes when state is unchanged."""
+    entity = object.__new__(WebastoConnectBinarySensor)
+    entity._device_id = 1
+    entity._cloud = SimpleNamespace(devices={1: SimpleNamespace(is_connected=False)})
+    entity.entity_description = WebastoConnectBinarySensorEntityDescription(
+        key="is_connected",
+        name="Connected",
+        value_fn=lambda dev: dev.is_connected,
+        icon_on="mdi:wifi",
+        icon_off="mdi:wifi-off",
+    )
+    entity._attr_is_on = False
+    entity._attr_icon = "mdi:wifi-off"
+    entity.async_write_ha_state = Mock()
+
+    entity._handle_coordinator_update()
+
+    entity.async_write_ha_state.assert_not_called()
+
+
+def test_connected_binary_sensor_writes_when_state_becomes_unknown() -> None:
+    """Connectivity binary sensor should write when state changes to unknown."""
+    entity = object.__new__(WebastoConnectBinarySensor)
+    entity._device_id = 1
+    entity._cloud = SimpleNamespace(devices={1: SimpleNamespace(is_connected=None)})
+    entity.entity_description = WebastoConnectBinarySensorEntityDescription(
+        key="is_connected",
+        name="Connected",
+        value_fn=lambda dev: dev.is_connected,
+        icon_on="mdi:wifi",
+        icon_off="mdi:wifi-off",
+    )
+    entity._attr_is_on = True
+    entity._attr_icon = "mdi:wifi"
+    entity.async_write_ha_state = Mock()
+
+    entity._handle_coordinator_update()
+
+    entity.async_write_ha_state.assert_called_once()
