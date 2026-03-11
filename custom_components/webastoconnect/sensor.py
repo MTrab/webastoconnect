@@ -57,6 +57,7 @@ def _main_output_end_name(webasto) -> str:
         return f"{output_name} ends"
     return "Output ends"
 
+
 SENSORS = [
     WebastoConnectSensorEntityDescription(
         key="temperature",
@@ -153,11 +154,16 @@ class WebastoConnectSensor(WebastoBaseEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
+        new_name = self._attr_name
         if not isinstance(self.entity_description.name_fn, type(None)):  # type: ignore
-            self._attr_name = self.entity_description.name_fn(  # type: ignore
+            new_name = self.entity_description.name_fn(  # type: ignore
                 self._cloud.devices[self._device_id]
             )
-        self._attr_native_value = self.entity_description.value_fn(  # type: ignore
+        new_value = self.entity_description.value_fn(  # type: ignore
             self._cloud.devices[self._device_id]
         )
-        self.async_write_ha_state()
+
+        if new_name != self._attr_name or new_value != self._attr_native_value:
+            self._attr_name = new_name
+            self._attr_native_value = new_value
+            self.async_write_ha_state()

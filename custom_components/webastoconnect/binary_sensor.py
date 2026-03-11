@@ -69,7 +69,7 @@ class WebastoConnectBinarySensor(
             )
         )
 
-        self._attr_is_on = self.entity_description.value_fn( # type: ignore
+        self._attr_is_on = self.entity_description.value_fn(  # type: ignore
             self._cloud.devices[self._device_id]
         )
         self._attr_icon = (
@@ -81,12 +81,15 @@ class WebastoConnectBinarySensor(
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self._attr_is_on = self.entity_description.value_fn(  # type: ignore
+        new_is_on = self.entity_description.value_fn(  # type: ignore
             self._cloud.devices[self._device_id]
         )
-        self._attr_icon = (
+        new_icon = (
             self.entity_description.icon_on  # type: ignore
-            if self._attr_is_on
+            if new_is_on
             else self.entity_description.icon_off  # type: ignore
         )
-        self.async_write_ha_state()
+        if new_is_on != self._attr_is_on or new_icon != self._attr_icon:
+            self._attr_is_on = new_is_on
+            self._attr_icon = new_icon
+            self.async_write_ha_state()
