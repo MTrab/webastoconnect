@@ -5,6 +5,9 @@
       "mode": "Modus",
       "timers": "Timere",
       "map": "Kort",
+      "heating": "Opvarmning",
+      "ventilation": "Ventilation",
+      "mode_unavailable": "Utilgængelig",
       "active": "Aktiv",
       "inactive": "Ikke aktiv",
       "ending_now": "Slutter nu",
@@ -12,6 +15,7 @@
       "main_output_missing": "Vælg en Webasto-enhed eller main output entity i kortindstillinger",
       "output": "Output",
       "toggle_output": "Skift output",
+      "save": "Gem",
       "close": "Luk",
       "map_unavailable": "Lokation er ikke tilgængelig"
     }

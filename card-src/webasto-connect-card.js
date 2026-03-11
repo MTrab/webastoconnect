@@ -267,6 +267,69 @@ class WebastoConnectCard extends HTMLElement {
     this._render();
   }
 
+  _resolveMode(ventilationEntity) {
+    if (!ventilationEntity) {
+      return null;
+    }
+    if (
+      ventilationEntity.state === "unknown" ||
+      ventilationEntity.state === "unavailable"
+    ) {
+      return null;
+    }
+    return ventilationEntity.state === "on" ? "ventilation" : "heating";
+  }
+
+  _modeLabel(mode) {
+    if (mode === "ventilation") {
+      return localize(this._hass, "card.ui.ventilation");
+    }
+    if (mode === "heating") {
+      return localize(this._hass, "card.ui.heating");
+    }
+    return localize(this._hass, "card.ui.mode_unavailable");
+  }
+
+  _isModeSelectable(entityId) {
+    return Boolean(entityId && this._getState(entityId));
+  }
+
+  _openModePopup() {
+    const entityId = this._resolveEntities().ventilation_mode_entity;
+    const ventilationMode = this._getState(entityId);
+    if (!this._isModeSelectable(entityId)) {
+      return;
+    }
+
+    this._modeDraft = this._resolveMode(ventilationMode) || "heating";
+    this._modePopupOpen = true;
+    this._render();
+  }
+
+  _closeModePopup() {
+    this._modePopupOpen = false;
+    this._modeDraft = undefined;
+    this._render();
+  }
+
+  _selectModeDraft(mode) {
+    this._modeDraft = mode;
+    this._render();
+  }
+
+  _saveModeSelection() {
+    const entityId = this._resolveEntities().ventilation_mode_entity;
+    if (!this._hass || !entityId || !this._modeDraft) {
+      return;
+    }
+
+    const service = this._modeDraft === "ventilation" ? "turn_on" : "turn_off";
+    this._hass.callService("homeassistant", service, {
+      entity_id: entityId,
+    });
+    this._closeModePopup();
+  }
+
   async _renderMapPopup(entityId) {
     const host = this.shadowRoot?.getElementById("map-card-host");
     if (!host || !this._hass || !entityId) {
@@ -306,6 +369,7 @@ class WebastoConnectCard extends HTMLElement {
     const temp = this._getState(entities.temperature_entity);
     const battery = this._getState(entities.battery_entity);
     const location = this._getState(entities.location_entity);
+    const ventilationMode = this._getState(entities.ventilation_mode_entity);
 
     const isMainAvailable = Boolean(main);
     const isOn = isMainAvailable && main.state === "on";
@@ -326,6 +390,13 @@ class WebastoConnectCard extends HTMLElement {
     const titleTimers = localize(this._hass, "card.ui.timers");
     const titleMap = localize(this._hass, "card.ui.map");
     const toggleLabel = localize(this._hass, "card.ui.toggle_output");
+    const modeEnabled = this._isModeSelectable(entities.ventilation_mode_entity);
+    const modeClass = modeEnabled ? "mode-enabled" : "mode-disabled";
+    const modeTabIndex = modeEnabled ? "0" : "-1";
+    const modeAriaDisabled = modeEnabled ? "false" : "true";
+    const modePopup = this._modePopupOpen && modeEnabled;
+    const selectedMode = this._modeDraft || this._resolveMode(ventilationMode) || "heating";
+    const saveText = localize(this._hass, "card.ui.save");
     const mapEnabled = this._isMapEnabled(entities.location_entity, location);
     const mapClass = mapEnabled ? "map-enabled" : "map-disabled";
     const mapTabIndex = mapEnabled ? "0" : "-1";
@@ -355,26 +426,45 @@ class WebastoConnectCard extends HTMLElement {
           color: #2d4468;
           font-size: 18px;
           display: flex;
+          flex-direction: column;
           align-items: flex-start;
           justify-content: flex-start;
           padding: 16px;
           box-sizing: border-box;
+          overflow: hidden;
         }
         .q.tr, .q.br {
-          justify-content: flex-end;
+          align-items: flex-end;
           text-align: right;
         }
-        .q.bl, .q.br {
-          align-items: flex-end;
+        .q.tr {
+          justify-content: flex-start;
+        }
+        .q.br {
+          justify-content: flex-end;
+        }
+        .q.bl {
+          align-items: flex-start;
+          justify-content: flex-end;
+          text-align: left;
         }
         .q.map-enabled {
           cursor: pointer;
         }
-        .q.map-enabled:hover {
-          filter: brightness(1.03);
+        .q.mode-enabled {
+          cursor: pointer;
         }
-        .q.map-disabled {
+        .q.mode-enabled:hover {
+          background: #aebbd3;
+        }
+        .q.map-enabled:hover {
+          background: #aebbd3;
+        }
+        .q.map-disabled, .q.mode-disabled {
           opacity: 0.6;
+        }
+        .q-label {
+          display: block;
         }
         .q.tl { left: 0; top: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
         .q.tr { right: 0; top: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
@@ -382,7 +472,7 @@ class WebastoConnectCard extends HTMLElement {
         .q.br { right: 0; bottom: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
         .divider-v, .divider-h {
           position: absolute;
-          background: #e7edf8;
+          background: #efefef;
           pointer-events: none;
         }
         .divider-v {
@@ -464,7 +554,7 @@ class WebastoConnectCard extends HTMLElement {
           gap: 8px;
           word-break: break-word;
         }
-        .map-modal-backdrop {
+        .modal-backdrop {
           position: fixed;
           inset: 0;
           background: rgba(0, 0, 0, 0.45);
@@ -475,14 +565,14 @@ class WebastoConnectCard extends HTMLElement {
           padding: 16px;
           box-sizing: border-box;
         }
-        .map-modal {
+        .modal-shell {
           width: min(640px, 100%);
           background: var(--card-background-color, #fff);
           border-radius: 12px;
           overflow: hidden;
           box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
         }
-        .map-modal-header {
+        .modal-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -491,7 +581,7 @@ class WebastoConnectCard extends HTMLElement {
           color: var(--primary-text-color, #111);
           font-size: 15px;
         }
-        .map-modal-close {
+        .modal-close {
           border: 0;
           border-radius: 8px;
           padding: 6px 10px;
@@ -499,6 +589,75 @@ class WebastoConnectCard extends HTMLElement {
           color: var(--primary-text-color, #111);
           cursor: pointer;
           font: inherit;
+        }
+        .mode-modal {
+          width: min(420px, 100%);
+          background: #f7f8fb;
+          border-radius: 28px;
+          overflow: hidden;
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+        }
+        .mode-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 16px 18px 0;
+          color: #20334d;
+          font-size: 16px;
+        }
+        .mode-modal-body {
+          padding: 12px 18px 18px;
+        }
+        .mode-options {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-top: 8px;
+        }
+        .mode-option {
+          border: 0;
+          border-radius: 24px;
+          background: #d5dcea;
+          color: #29456f;
+          padding: 18px 14px;
+          min-height: 148px;
+          text-align: left;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          cursor: pointer;
+          font: inherit;
+          transition: transform 120ms ease, background 120ms ease, color 120ms ease;
+        }
+        .mode-option:hover {
+          transform: translateY(-1px);
+        }
+        .mode-option.selected {
+          background: #7ea2da;
+          color: #17345c;
+        }
+        .mode-option-title {
+          font-size: 18px;
+          font-weight: 500;
+        }
+        .mode-option-icon {
+          align-self: flex-end;
+        }
+        .mode-modal-actions {
+          display: flex;
+          justify-content: center;
+          margin-top: 16px;
+        }
+        .mode-save {
+          border: 0;
+          border-radius: 14px;
+          min-width: 88px;
+          padding: 12px 20px;
+          background: #d5dcea;
+          color: #20334d;
+          cursor: pointer;
+          font: inherit;
+          font-weight: 500;
         }
         .map-card-host {
           height: 360px;
@@ -522,7 +681,9 @@ class WebastoConnectCard extends HTMLElement {
       <div class="wrapper">
         <ha-card>
           <div class="q tl">${titleGeoFence}</div>
-          <div class="q tr">${titleMode}</div>
+          <div class="q tr ${modeClass}" id="mode-action" role="button" tabindex="${modeTabIndex}" aria-disabled="${modeAriaDisabled}">
+            <span class="q-label">${titleMode}</span>
+          </div>
           <div class="q bl">${titleTimers}</div>
           <div class="q br ${mapClass}" id="map-action" role="button" tabindex="${mapTabIndex}" aria-disabled="${mapAriaDisabled}">${titleMap}</div>
           <div class="divider-v"></div>
@@ -541,12 +702,37 @@ class WebastoConnectCard extends HTMLElement {
           <div class="meta-location"><ha-icon icon="mdi:map-marker" style="--mdc-icon-size: 24px;"></ha-icon>${locationText}</div>
         </div>
       </div>
+      ${modePopup ? `
+      <div class="modal-backdrop" id="mode-modal-backdrop">
+        <div class="mode-modal" role="dialog" aria-modal="true" aria-label="${titleMode}">
+          <div class="mode-modal-header">
+            <span>${titleMode}</span>
+            <button class="modal-close" id="mode-modal-close">${closeText}</button>
+          </div>
+          <div class="mode-modal-body">
+            <div class="mode-options">
+              <button class="mode-option ${selectedMode === "ventilation" ? "selected" : ""}" id="mode-option-ventilation">
+                <span class="mode-option-title">${localize(this._hass, "card.ui.ventilation")}</span>
+                <ha-icon class="mode-option-icon" icon="mdi:fan" style="--mdc-icon-size: 46px;"></ha-icon>
+              </button>
+              <button class="mode-option ${selectedMode === "heating" ? "selected" : ""}" id="mode-option-heating">
+                <span class="mode-option-title">${localize(this._hass, "card.ui.heating")}</span>
+                <ha-icon class="mode-option-icon" icon="mdi:car-defrost-rear" style="--mdc-icon-size: 46px;"></ha-icon>
+              </button>
+            </div>
+            <div class="mode-modal-actions">
+              <button class="mode-save" id="mode-save">${saveText}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      ` : ""}
       ${mapPopup ? `
-      <div class="map-modal-backdrop" id="map-modal-backdrop">
-        <div class="map-modal" role="dialog" aria-modal="true" aria-label="${titleMap}">
-          <div class="map-modal-header">
+      <div class="modal-backdrop" id="map-modal-backdrop">
+        <div class="modal-shell" role="dialog" aria-modal="true" aria-label="${titleMap}">
+          <div class="modal-header">
             <span>${titleMap}</span>
-            <button class="map-modal-close" id="map-modal-close">${closeText}</button>
+            <button class="modal-close" id="map-modal-close">${closeText}</button>
           </div>
           <div class="map-card-host" id="map-card-host"></div>
         </div>
@@ -561,6 +747,17 @@ class WebastoConnectCard extends HTMLElement {
         if (ev.key === "Enter" || ev.key === " ") {
           ev.preventDefault();
           this._toggleMainOutput();
+        }
+      };
+    }
+
+    const modeAction = this.shadowRoot.getElementById("mode-action");
+    if (modeAction && modeEnabled) {
+      modeAction.onclick = () => this._openModePopup();
+      modeAction.onkeydown = (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          this._openModePopup();
         }
       };
     }
@@ -589,6 +786,37 @@ class WebastoConnectCard extends HTMLElement {
         backdrop.onclick = (ev) => {
           if (ev.target === backdrop) {
             this._closeMapPopup();
+          }
+        };
+      }
+    }
+
+    if (modePopup) {
+      const close = this.shadowRoot.getElementById("mode-modal-close");
+      if (close) {
+        close.onclick = () => this._closeModePopup();
+      }
+
+      const ventilationOption = this.shadowRoot.getElementById("mode-option-ventilation");
+      if (ventilationOption) {
+        ventilationOption.onclick = () => this._selectModeDraft("ventilation");
+      }
+
+      const heatingOption = this.shadowRoot.getElementById("mode-option-heating");
+      if (heatingOption) {
+        heatingOption.onclick = () => this._selectModeDraft("heating");
+      }
+
+      const save = this.shadowRoot.getElementById("mode-save");
+      if (save) {
+        save.onclick = () => this._saveModeSelection();
+      }
+
+      const backdrop = this.shadowRoot.getElementById("mode-modal-backdrop");
+      if (backdrop) {
+        backdrop.onclick = (ev) => {
+          if (ev.target === backdrop) {
+            this._closeModePopup();
           }
         };
       }

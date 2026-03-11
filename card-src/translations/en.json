@@ -5,6 +5,9 @@
       "mode": "Mode",
       "timers": "Timers",
       "map": "Map",
+      "heating": "Heating",
+      "ventilation": "Ventilation",
+      "mode_unavailable": "Unavailable",
       "active": "Active",
       "inactive": "Inactive",
       "ending_now": "Ending now",
@@ -12,6 +15,7 @@
       "main_output_missing": "Select a Webasto device or main output entity in card settings",
       "output": "Output",
       "toggle_output": "Toggle output",
+      "save": "Save",
       "close": "Close",
       "map_unavailable": "Location is unavailable"
     }
