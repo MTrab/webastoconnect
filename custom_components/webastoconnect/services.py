@@ -78,13 +78,13 @@ VALID_TIMER_LINES = (
     LINE_VENTILATION_LEGACY,
 )
 WEEKDAY_TO_MASK = {
-    "monday": 64,
-    "tuesday": 1,
-    "wednesday": 2,
-    "thursday": 4,
-    "friday": 8,
-    "saturday": 16,
-    "sunday": 32,
+    "monday": 1,
+    "tuesday": 2,
+    "wednesday": 4,
+    "thursday": 8,
+    "friday": 16,
+    "saturday": 32,
+    "sunday": 64,
 }
 
 _BASE_SCHEMA = vol.Schema({vol.Required(ATTR_DEVICE_ID): cv.string})
