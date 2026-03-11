@@ -67,7 +67,7 @@ var T={card:{ui:{geo_fence:"Geo-fence",mode:"Modus",timers:"Timere",map:"Kort",h
         .q.br { right: 0; bottom: 0; width: calc(50% - 8px); height: calc(50% - 8px); }
         .divider-v, .divider-h {
           position: absolute;
-          background: #efefef;
+          background: #ffffff;
           pointer-events: none;
         }
         .divider-v {
