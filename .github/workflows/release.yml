@@ -2,6 +2,11 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Release tag to package, for example v1.1.0
+        required: true
+        type: string
   release:
     types: [published]
 
@@ -11,6 +16,7 @@ permissions:
 
 env:
   COMPONENT_DIR: webastoconnect
+  RELEASE_TAG: ${{ inputs.tag_name || github.event.release.tag_name }}
 
 jobs:
   release_zip_file:
@@ -19,10 +25,18 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "20"
+      - name: Validate release tag
+        run: |
+          if [ -z "${{ env.RELEASE_TAG }}" ]; then
+            echo "::error::Missing release tag. Provide workflow_dispatch input 'tag_name' or publish a GitHub release."
+            exit 1
+          fi
       - name: Validate release automation token
         env:
           RELEASE_WORKFLOW_TOKEN: ${{ secrets.RELEASE_WORKFLOW_TOKEN }}
@@ -31,13 +45,13 @@ jobs:
             echo "::error::Missing secret RELEASE_WORKFLOW_TOKEN. Configure a PAT (repo scope) so required checks can run on the manifest PR."
             exit 1
           fi
-      - name: Update manifest.json version to ${{ github.event.release.tag_name }}
+      - name: Update manifest.json version to ${{ env.RELEASE_TAG }}
         run: |
-          python3 ${{ github.workspace }}/.github/scripts/update_hacs_manifest.py --version ${{ github.event.release.tag_name }} --path /custom_components/webastoconnect/
+          python3 ${{ github.workspace }}/.github/scripts/update_hacs_manifest.py --version ${{ env.RELEASE_TAG }} --path /custom_components/webastoconnect/
       - name: Build Webasto Connect Card
         run: |
           cd card-src
-          npm ci
+          npm install
           npm run build
       - name: Create pull request for manifest update
         id: create_manifest_pr
@@ -49,11 +63,11 @@ jobs:
           add-paths: |
             ./custom_components/webastoconnect/manifest.json
             ./custom_components/webastoconnect/card/webasto-connect-card.js
-          commit-message: "release: update manifest and card build for ${{ github.event.release.tag_name }}"
-          branch: "chore/release-manifest-${{ github.event.release.tag_name }}"
-          title: "release: update manifest for ${{ github.event.release.tag_name }}"
+          commit-message: "release: update manifest and card build for ${{ env.RELEASE_TAG }}"
+          branch: "chore/release-manifest-${{ env.RELEASE_TAG }}"
+          title: "release: update manifest for ${{ env.RELEASE_TAG }}"
           body: |
-            Automated manifest and bundled card update for `${{ github.event.release.tag_name }}`.
+            Automated manifest and bundled card update for `${{ env.RELEASE_TAG }}`.
           labels: |
             skip-changelog
       - name: Verify gh is available
@@ -98,5 +112,5 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ./custom_components/webastoconnect/webastoconnect.zip
           asset_name: webastoconnect.zip
-          tag: ${{ github.ref }}
+          tag: ${{ env.RELEASE_TAG }}
           overwrite: true
