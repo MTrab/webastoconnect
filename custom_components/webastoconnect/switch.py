@@ -100,23 +100,9 @@ class WebastoConnectSwitch(WebastoBaseEntity, SwitchEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        previous_state = (
-            self._attr_name,
-            self._attr_is_on,
-            self._attr_icon,
-            getattr(self, "_attr_available", True),
-        )
         self._handle_states()
-        new_available = self._is_device_connected
-        self._attr_available = new_available
-        current_state = (
-            self._attr_name,
-            self._attr_is_on,
-            self._attr_icon,
-            new_available,
-        )
-        if current_state != previous_state:
-            self.async_write_ha_state()
+        self._attr_available = self._is_device_connected
+        self.async_write_ha_state()
 
     @property
     def available(self) -> bool:
