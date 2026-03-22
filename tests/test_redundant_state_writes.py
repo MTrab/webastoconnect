@@ -59,8 +59,8 @@ def test_sensor_writes_when_value_changes() -> None:
     entity.async_write_ha_state.assert_called_once()
 
 
-def test_switch_skips_write_when_state_unchanged() -> None:
-    """Switch should avoid state write when state and icon are unchanged."""
+def test_switch_writes_when_state_unchanged() -> None:
+    """Switches should always write state on coordinator updates."""
     entity = object.__new__(WebastoConnectSwitch)
     entity._device_id = 1
     entity._cloud = SimpleNamespace(
@@ -84,7 +84,7 @@ def test_switch_skips_write_when_state_unchanged() -> None:
 
     entity._handle_coordinator_update()
 
-    entity.async_write_ha_state.assert_not_called()
+    entity.async_write_ha_state.assert_called_once()
 
 
 def test_switch_writes_when_device_becomes_disconnected() -> None:
@@ -118,8 +118,8 @@ def test_switch_writes_when_device_becomes_disconnected() -> None:
     entity.async_write_ha_state.assert_called_once()
 
 
-def test_aux_switch_skips_write_when_state_unchanged_without_icon() -> None:
-    """Aux switches should not crash when no explicit icon is defined."""
+def test_aux_switch_writes_when_state_unchanged_without_icon() -> None:
+    """Aux switches should always write without requiring icon attributes."""
     entity = object.__new__(WebastoConnectSwitch)
     entity._device_id = 1
     entity._cloud = SimpleNamespace(
@@ -144,7 +144,7 @@ def test_aux_switch_skips_write_when_state_unchanged_without_icon() -> None:
 
     entity._handle_coordinator_update()
 
-    entity.async_write_ha_state.assert_not_called()
+    entity.async_write_ha_state.assert_called_once()
 
 
 def test_aux_switch_writes_when_state_changes_without_icon() -> None:
