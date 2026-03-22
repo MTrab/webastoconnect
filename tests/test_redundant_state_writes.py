@@ -118,6 +118,64 @@ def test_switch_writes_when_device_becomes_disconnected() -> None:
     entity.async_write_ha_state.assert_called_once()
 
 
+def test_aux_switch_skips_write_when_state_unchanged_without_icon() -> None:
+    """Aux switches should not crash when no explicit icon is defined."""
+    entity = object.__new__(WebastoConnectSwitch)
+    entity._device_id = 1
+    entity._cloud = SimpleNamespace(
+        devices={
+            1: SimpleNamespace(
+                output_aux1_name="AUX1",
+                output_aux1=False,
+                is_connected=True,
+            )
+        }
+    )
+    entity.entity_description = WebastoConnectSwitchEntityDescription(
+        key="aux1_output",
+        name="AUX1",
+        value_fn=lambda dev: dev.output_aux1,
+        name_fn=lambda dev: dev.output_aux1_name,
+    )
+    entity._attr_name = "AUX1"
+    entity._attr_is_on = False
+    entity._attr_available = True
+    entity.async_write_ha_state = Mock()
+
+    entity._handle_coordinator_update()
+
+    entity.async_write_ha_state.assert_not_called()
+
+
+def test_aux_switch_writes_when_state_changes_without_icon() -> None:
+    """Aux switches should still write state changes without icon attributes."""
+    entity = object.__new__(WebastoConnectSwitch)
+    entity._device_id = 1
+    entity._cloud = SimpleNamespace(
+        devices={
+            1: SimpleNamespace(
+                output_aux1_name="AUX1",
+                output_aux1=True,
+                is_connected=True,
+            )
+        }
+    )
+    entity.entity_description = WebastoConnectSwitchEntityDescription(
+        key="aux1_output",
+        name="AUX1",
+        value_fn=lambda dev: dev.output_aux1,
+        name_fn=lambda dev: dev.output_aux1_name,
+    )
+    entity._attr_name = "AUX1"
+    entity._attr_is_on = False
+    entity._attr_available = True
+    entity.async_write_ha_state = Mock()
+
+    entity._handle_coordinator_update()
+
+    entity.async_write_ha_state.assert_called_once()
+
+
 def test_number_is_unavailable_when_device_disconnected() -> None:
     """Writable number entities should be unavailable when device disconnects."""
     entity = object.__new__(WebastoConnectNumber)

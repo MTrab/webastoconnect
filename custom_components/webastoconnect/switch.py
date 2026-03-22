@@ -103,7 +103,7 @@ class WebastoConnectSwitch(WebastoBaseEntity, SwitchEntity):
         previous_state = (
             self._attr_name,
             self._attr_is_on,
-            self._attr_icon,
+            getattr(self, "_attr_icon", None),
             getattr(self, "_attr_available", True),
         )
         self._handle_states()
@@ -112,7 +112,7 @@ class WebastoConnectSwitch(WebastoBaseEntity, SwitchEntity):
         current_state = (
             self._attr_name,
             self._attr_is_on,
-            self._attr_icon,
+            getattr(self, "_attr_icon", None),
             new_available,
         )
         if current_state != previous_state:
