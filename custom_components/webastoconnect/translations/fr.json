@@ -7,7 +7,8 @@
         },
         "error": {
             "cannot_connect": "Connexion impossible",
-            "invalid_auth": "Identifiants invalides"
+            "invalid_auth": "Identifiants invalides",
+            "ratelimit": "Limite de requêtes dépassée - réessayez plus tard"
         },
         "step": {
             "reauth_confirm": {
@@ -29,7 +30,8 @@
     "options": {
         "error": {
             "cannot_connect": "Connexion impossible",
-            "invalid_auth": "Identifiants invalides"
+            "invalid_auth": "Identifiants invalides",
+            "ratelimit": "Limite de requêtes dépassée - réessayez plus tard"
         },
         "step": {
             "init": {

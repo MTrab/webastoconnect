@@ -7,7 +7,11 @@ from unittest.mock import AsyncMock
 import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
-from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
+from pywebasto.exceptions import (
+    InvalidRequestException,
+    TooManyRequestsException,
+    UnauthorizedException,
+)
 
 from custom_components.webastoconnect.api import WebastoConnectUpdateCoordinator
 
@@ -61,7 +65,9 @@ async def test_update_data_unauthorized_ignores_connect_validation_errors() -> N
     """Connect-side errors are irrelevant because connect is not used in flow."""
     update_mock = AsyncMock(side_effect=UnauthorizedException("unauthorized"))
     coordinator = _build_coordinator(update_mock)
-    coordinator.cloud.connect = AsyncMock(side_effect=InvalidRequestException("bad state"))
+    coordinator.cloud.connect = AsyncMock(
+        side_effect=InvalidRequestException("bad state")
+    )
 
     with pytest.raises(ConfigEntryAuthFailed):
         await coordinator._async_update_data()
@@ -89,6 +95,19 @@ async def test_update_data_maps_invalid_request_to_update_failed() -> None:
 
     with pytest.raises(UpdateFailed):
         await coordinator._async_update_data()
+
+
+@pytest.mark.asyncio
+async def test_update_data_sets_retry_after_for_rate_limit() -> None:
+    """Rate limits should request delayed retry."""
+    update_mock = AsyncMock(side_effect=TooManyRequestsException("too many"))
+    coordinator = _build_coordinator(update_mock)
+
+    with pytest.raises(UpdateFailed) as exc_info:
+        await coordinator._async_update_data()
+
+    assert exc_info.value.retry_after == 300
+    assert "rate limited" in str(exc_info.value)
 
 
 @pytest.mark.asyncio
