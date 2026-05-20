@@ -8,13 +8,11 @@ from typing import Any, TypeAlias
 
 from homeassistant.components.lovelace.const import (
     CONF_RESOURCE_TYPE_WS,
-    CONF_TYPE,
-    CONF_URL,
     LOVELACE_DATA,
     MODE_STORAGE,
 )
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
-from homeassistant.const import CONF_EMAIL
+from homeassistant.const import CONF_EMAIL, CONF_TYPE, CONF_URL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import entity_registry as er
@@ -23,10 +21,15 @@ from homeassistant.util import slugify as util_slugify
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
 try:
-    from pywebasto.exceptions import ForbiddenException, InvalidResponseException
+    from pywebasto.exceptions import (
+        ForbiddenException,
+        InvalidResponseException,
+        TooManyRequestsException,
+    )
 except ImportError:
     ForbiddenException = InvalidRequestException
     InvalidResponseException = InvalidRequestException
+    TooManyRequestsException = InvalidRequestException
 
 from .api import WebastoConnectUpdateCoordinator
 from .card_install import ensure_card_installed
@@ -162,6 +165,9 @@ async def _async_setup(
     except (InvalidRequestException, ForbiddenException, InvalidResponseException):
         await coordinator.cloud.close()
         raise ConfigEntryNotReady("Error connecting to the API - try again later")
+    except TooManyRequestsException:
+        await coordinator.cloud.close()
+        raise ConfigEntryNotReady("Rate limited - try again later")
 
     if coordinator.cloud.devices:
         # connect() already hydrated device state, avoid an immediate duplicate update call.
@@ -183,9 +189,7 @@ async def _async_ensure_lovelace_card_resource(
     """Ensure the Webasto Connect card resource exists in Lovelace storage mode."""
     resource_base_url = f"/local/{CARD_WWW_SUBDIR}/{CARD_FILENAME}"
     resource_url = (
-        f"{resource_base_url}?v={card_hash}"
-        if card_hash
-        else resource_base_url
+        f"{resource_base_url}?v={card_hash}" if card_hash else resource_base_url
     )
 
     if (lovelace_data := hass.data.get(LOVELACE_DATA)) is None:

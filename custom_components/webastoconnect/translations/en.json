@@ -7,7 +7,8 @@
         },
         "error": {
             "cannot_connect": "Cannot connect",
-            "invalid_auth": "Invalid authentication"
+            "invalid_auth": "Invalid authentication",
+            "ratelimit": "Rate limit exceeded - try again later"
         },
         "step": {
             "reauth_confirm": {
@@ -29,7 +30,8 @@
     "options": {
         "error": {
             "cannot_connect": "Cannot connect",
-            "invalid_auth": "Invalid authentication"
+            "invalid_auth": "Invalid authentication",
+            "ratelimit": "Rate limit exceeded - try again later"
         },
         "step": {
             "init": {

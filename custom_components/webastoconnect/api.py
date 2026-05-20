@@ -15,10 +15,15 @@ from pywebasto import WebastoConnect
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
 try:
-    from pywebasto.exceptions import ForbiddenException, InvalidResponseException
+    from pywebasto.exceptions import (
+        ForbiddenException,
+        InvalidResponseException,
+        TooManyRequestsException,
+    )
 except ImportError:
     ForbiddenException = InvalidRequestException
     InvalidResponseException = InvalidRequestException
+    TooManyRequestsException = InvalidRequestException
 
 from .const import DOMAIN
 
@@ -76,14 +81,17 @@ class WebastoConnectUpdateCoordinator(DataUpdateCoordinator[None]):
         try:
             await self.async_execute_cloud_call(self.cloud.update)
         except UnauthorizedException as err:
-            raise ConfigEntryAuthFailed(
-                "Authentication with Webasto failed"
-            ) from err
+            raise ConfigEntryAuthFailed("Authentication with Webasto failed") from err
         except InvalidRequestException as err:
             raise UpdateFailed(f"Webasto API request failed: {err}") from err
         except (ForbiddenException, InvalidResponseException) as err:
             raise UpdateFailed(
                 f"Webasto API temporary failure: {err}",
+                retry_after=300,
+            ) from err
+        except TooManyRequestsException as err:
+            raise UpdateFailed(
+                f"Webasto API rate limited: {err}",
                 retry_after=300,
             ) from err
         except Exception as err:

@@ -7,7 +7,8 @@
         },
         "error": {
             "cannot_connect": "Yhteyden muodostaminen epäonnistui",
-            "invalid_auth": "Virheelliset tunnistetiedot"
+            "invalid_auth": "Virheelliset tunnistetiedot",
+            "ratelimit": "Pyyntöraja ylittynyt - yritä uudelleen myöhemmin"
         },
         "step": {
             "reauth_confirm": {
@@ -29,7 +30,8 @@
     "options": {
         "error": {
             "cannot_connect": "Yhteyden muodostaminen epäonnistui",
-            "invalid_auth": "Virheelliset tunnistetiedot"
+            "invalid_auth": "Virheelliset tunnistetiedot",
+            "ratelimit": "Pyyntöraja ylittynyt - yritä uudelleen myöhemmin"
         },
         "step": {
             "init": {

@@ -7,7 +7,8 @@
         },
         "error": {
             "cannot_connect": "Kan ikke oprette forbindelse",
-            "invalid_auth": "Ugyldig autentificering"
+            "invalid_auth": "Ugyldig autentificering",
+            "ratelimit": "Ratelimit overskredet - prøv igen senere"
         },
         "step": {
             "reauth_confirm": {
@@ -29,7 +30,8 @@
     "options": {
         "error": {
             "cannot_connect": "Kan ikke oprette forbindelse",
-            "invalid_auth": "Ugyldig autentificering"
+            "invalid_auth": "Ugyldig autentificering",
+            "ratelimit": "Ratelimit overskredet - prøv igen senere"
         },
         "step": {
             "init": {

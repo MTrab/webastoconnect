@@ -6,7 +6,11 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from homeassistant.const import CONF_EMAIL
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
-from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
+from pywebasto.exceptions import (
+    InvalidRequestException,
+    TooManyRequestsException,
+    UnauthorizedException,
+)
 
 import custom_components.webastoconnect as integration
 
@@ -21,7 +25,9 @@ def _mock_hass_for_setup() -> SimpleNamespace:
 
 
 @pytest.mark.asyncio
-async def test_setup_skips_first_refresh_when_connect_hydrates_devices(monkeypatch) -> None:
+async def test_setup_skips_first_refresh_when_connect_hydrates_devices(
+    monkeypatch,
+) -> None:
     """Skip the coordinator first refresh if connect already provided devices."""
     created: list[SimpleNamespace] = []
     device = SimpleNamespace(name="Heater", device_id=1)
@@ -60,7 +66,9 @@ async def test_setup_skips_first_refresh_when_connect_hydrates_devices(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_setup_runs_first_refresh_when_connect_has_no_devices(monkeypatch) -> None:
+async def test_setup_runs_first_refresh_when_connect_has_no_devices(
+    monkeypatch,
+) -> None:
     """Run the coordinator first refresh when connect did not hydrate devices."""
     created: list[SimpleNamespace] = []
 
@@ -163,4 +171,41 @@ async def test_setup_closes_client_when_connect_temporarily_fails(monkeypatch) -
     with pytest.raises(ConfigEntryNotReady):
         await integration._async_setup(hass, entry)
 
+    created[0].cloud.close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_setup_closes_client_when_connect_is_rate_limited(monkeypatch) -> None:
+    """Rate-limited setup should close the pywebasto client."""
+    created: list[SimpleNamespace] = []
+
+    def coordinator_factory(*_args, **_kwargs):
+        coordinator = SimpleNamespace(
+            cloud=SimpleNamespace(
+                connect=AsyncMock(side_effect=TooManyRequestsException("too many")),
+                close=AsyncMock(),
+                devices={},
+            ),
+            async_config_entry_first_refresh=AsyncMock(),
+            async_set_updated_data=Mock(),
+        )
+        created.append(coordinator)
+        return coordinator
+
+    monkeypatch.setattr(
+        integration, "WebastoConnectUpdateCoordinator", coordinator_factory
+    )
+    monkeypatch.setattr(
+        integration,
+        "async_get_integration",
+        AsyncMock(return_value=SimpleNamespace(version="test", file_path="/tmp")),
+    )
+
+    hass = _mock_hass_for_setup()
+    entry = SimpleNamespace(entry_id="entry-1", data={CONF_EMAIL: "a@b.c"}, options={})
+
+    with pytest.raises(ConfigEntryNotReady) as exc_info:
+        await integration._async_setup(hass, entry)
+
+    assert "Rate limited" in str(exc_info.value)
     created[0].cloud.close.assert_awaited_once()

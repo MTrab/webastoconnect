@@ -5,7 +5,12 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from homeassistant.components.lovelace.const import CONF_RESOURCE_TYPE_WS, CONF_TYPE, CONF_URL, LOVELACE_DATA, MODE_STORAGE
+from homeassistant.components.lovelace.const import (
+    CONF_RESOURCE_TYPE_WS,
+    LOVELACE_DATA,
+    MODE_STORAGE,
+)
+from homeassistant.const import CONF_TYPE, CONF_URL
 
 import custom_components.webastoconnect as integration
 from custom_components.webastoconnect.card_install import (

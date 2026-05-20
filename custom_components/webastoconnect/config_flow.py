@@ -11,10 +11,15 @@ from pywebasto import WebastoConnect
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
 try:
-    from pywebasto.exceptions import ForbiddenException, InvalidResponseException
+    from pywebasto.exceptions import (
+        ForbiddenException,
+        InvalidResponseException,
+        TooManyRequestsException,
+    )
 except ImportError:
     ForbiddenException = InvalidRequestException
     InvalidResponseException = InvalidRequestException
+    TooManyRequestsException = InvalidRequestException
 
 from .const import DOMAIN
 
@@ -60,9 +65,16 @@ class WebastoConnectConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except UnauthorizedException:
                 LOGGER.debug("Authorization ERROR")
                 errors["base"] = "invalid_auth"
-            except (InvalidRequestException, ForbiddenException, InvalidResponseException):
+            except (
+                InvalidRequestException,
+                ForbiddenException,
+                InvalidResponseException,
+            ):
                 LOGGER.debug("Connection validation failed")
                 errors["base"] = "cannot_connect"
+            except TooManyRequestsException:
+                LOGGER.debug("Connection validation failed")
+                errors["base"] = "ratelimit"
             finally:
                 await webasto.close()
 
@@ -94,18 +106,23 @@ class WebastoConnectConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
-            webasto = WebastoConnect(
-                user_input[CONF_EMAIL], user_input[CONF_PASSWORD]
-            )
+            webasto = WebastoConnect(user_input[CONF_EMAIL], user_input[CONF_PASSWORD])
             try:
                 await webasto.connect()
                 LOGGER.debug("Re-authorization OK")
             except UnauthorizedException:
                 LOGGER.debug("Re-authorization ERROR")
                 errors["base"] = "invalid_auth"
-            except (InvalidRequestException, ForbiddenException, InvalidResponseException):
+            except (
+                InvalidRequestException,
+                ForbiddenException,
+                InvalidResponseException,
+            ):
                 LOGGER.debug("Re-authorization connection validation failed")
                 errors["base"] = "cannot_connect"
+            except TooManyRequestsException:
+                LOGGER.debug("Re-authorization rate limited")
+                errors["base"] = "ratelimit"
             finally:
                 await webasto.close()
 
@@ -151,9 +168,16 @@ class WebastoConnectOptionsFlow(config_entries.OptionsFlow):
             except UnauthorizedException:
                 LOGGER.debug("Authorization ERROR")
                 errors["base"] = "invalid_auth"
-            except (InvalidRequestException, ForbiddenException, InvalidResponseException):
+            except (
+                InvalidRequestException,
+                ForbiddenException,
+                InvalidResponseException,
+            ):
                 LOGGER.debug("Connection validation failed")
                 errors["base"] = "cannot_connect"
+            except TooManyRequestsException:
+                LOGGER.debug("Connection validation rate limited")
+                errors["base"] = "ratelimit"
             finally:
                 await webasto.close()
 
