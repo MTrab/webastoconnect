@@ -20,6 +20,20 @@ from .api import WebastoConnectUpdateCoordinator
 from .const import DOMAIN
 
 
+def webasto_device_name(device: WebastoDevice, fallback_name: str | None = None) -> str:
+    """Return the configured device name."""
+    for data in (getattr(device, "dev_data", None), getattr(device, "app_data", None)):
+        if not isinstance(data, dict):
+            continue
+        if name := data.get("name") or data.get("alias"):
+            return str(name)
+
+    if fallback_name:
+        return fallback_name
+
+    return device.name
+
+
 @dataclass(frozen=True)
 class WebastoConnectBaseEntityDescriptionMixin:
     """Describes a basic Webasto entity."""
@@ -96,7 +110,9 @@ class WebastoBaseEntity(CoordinatorEntity[DataUpdateCoordinator[None]]):
         self._device_id = device_id
         self._cloud: WebastoConnect = coordinator.cloud
 
-        if hasattr(self.entity_description, "name_fn") and not isinstance(self.entity_description.name_fn, type(None)):  # type: ignore
+        if hasattr(self.entity_description, "name_fn") and not isinstance(
+            self.entity_description.name_fn, type(None)
+        ):  # type: ignore
             self._attr_name = self.entity_description.name_fn(  # type: ignore
                 self._cloud.devices[self._device_id]
             )
@@ -111,7 +127,7 @@ class WebastoBaseEntity(CoordinatorEntity[DataUpdateCoordinator[None]]):
 
         self._attr_device_info = {
             "identifiers": {(DOMAIN, str(self._device_id))},
-            "name": self._cloud.devices[self._device_id].name,
+            "name": self._device_name,
             "model": "ThermoConnect",
             "manufacturer": "Webasto",
             "hw_version": settings.get("hw_version", "Unknown"),
@@ -123,6 +139,13 @@ class WebastoBaseEntity(CoordinatorEntity[DataUpdateCoordinator[None]]):
     def _device(self) -> WebastoDevice:
         """Return the current device model for this entity."""
         return self._cloud.devices[self._device_id]
+
+    @property
+    def _device_name(self) -> str:
+        """Return the configured device name."""
+        coordinator = getattr(self, "coordinator", None)
+        device_names = getattr(coordinator, "device_names", {})
+        return webasto_device_name(self._device, device_names.get(str(self._device_id)))
 
     @property
     def _is_device_connected(self) -> bool:

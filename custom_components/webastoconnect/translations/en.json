@@ -1,5 +1,19 @@
 {
     "title": "Webasto Connect (ThermoConnect)",
+    "issues": {
+        "pending_approval": {
+            "title": "Webasto Connect device approval required",
+            "description": "Approve the ThermoConnect association request in the Webasto app before continuing setup. Pending device(s): {devices}",
+            "fix_flow": {
+                "step": {
+                    "confirm": {
+                        "title": "Continue Webasto Connect setup",
+                        "description": "After approving the ThermoConnect association request in the Webasto app, continue to reload the integration. Pending device(s): {devices}"
+                    }
+                }
+            }
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "This account is already configured",

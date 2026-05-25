@@ -1,5 +1,19 @@
 {
     "title": "Webasto Connect (ThermoConnect)",
+    "issues": {
+        "pending_approval": {
+            "title": "Webasto Connect -laite vaatii hyväksynnän",
+            "description": "Hyväksy ThermoConnect-yhdistämispyyntö Webasto-sovelluksessa ennen määrityksen jatkamista. Odottavat laitteet: {devices}",
+            "fix_flow": {
+                "step": {
+                    "confirm": {
+                        "title": "Jatka Webasto Connectin määritystä",
+                        "description": "Kun ThermoConnect-yhdistämispyyntö on hyväksytty Webasto-sovelluksessa, jatka ladataksesi integraation uudelleen. Odottavat laitteet: {devices}"
+                    }
+                }
+            }
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Tämä tili on jo määritetty",

@@ -14,10 +14,17 @@ from homeassistant.components.lovelace.const import (
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import CONF_EMAIL, CONF_TYPE, CONF_URL
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.exceptions import (
+    ConfigEntryAuthFailed,
+    ConfigEntryError,
+    ConfigEntryNotReady,
+)
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.loader import async_get_integration
 from homeassistant.util import slugify as util_slugify
+from pywebasto.enums import Request
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
 try:
@@ -32,11 +39,13 @@ except ImportError:
     TooManyRequestsException = InvalidRequestException
 
 from .api import WebastoConnectUpdateCoordinator
+from .base import webasto_device_name
 from .card_install import ensure_card_installed
 from .const import CARD_FILENAME, CARD_WWW_SUBDIR, DOMAIN, PLATFORMS, STARTUP
 from .services import async_register_services, async_unregister_services
 
 LOGGER = logging.getLogger(__name__)
+PENDING_APPROVAL_ISSUE_ID = "pending_approval"
 
 
 @dataclass(slots=True)
@@ -116,6 +125,66 @@ async def _async_migrate_unique_ids(
     )
 
 
+async def _async_update_device_registry_name(
+    hass: HomeAssistant,
+    device_id: int,
+    device_name: str,
+) -> None:
+    """Update the device registry name."""
+    device_registry = dr.async_get(hass)
+    device_entry = device_registry.async_get_device({(DOMAIN, str(device_id))})
+    if device_entry is None or device_entry.name_by_user is not None:
+        return
+    if device_entry.name == device_name:
+        return
+
+    device_registry.async_update_device(device_entry.id, name=device_name)
+
+
+def _device_names_from_webapi_data(data: dict[str, Any]) -> dict[str, str]:
+    """Return device names from webapi data."""
+    names = {}
+    if data.get("id") and data.get("alias"):
+        names[str(data["id"])] = str(data["alias"])
+
+    for device in data.get("account_info", {}).get("devices", []):
+        if isinstance(device, dict):
+            device_id = (
+                device.get("id") or device.get("device_id") or device.get("dev_id")
+            )
+            device_name = device.get("name") or device.get("alias")
+        else:
+            device_id = device[0] if len(device) > 0 else None
+            device_name = device[1] if len(device) > 1 else None
+        if device_id and device_name:
+            names[str(device_id)] = str(device_name)
+
+    return names
+
+
+async def _async_webapi_device_names(
+    coordinator: WebastoConnectUpdateCoordinator,
+) -> dict[str, str]:
+    """Fetch device names from webapi when available."""
+    if not coordinator.cloud.uses_webapi_session:
+        return {}
+
+    try:
+        data = await coordinator.cloud._call(Request.GET_DATA_NOPOLL)  # noqa: SLF001
+    except (
+        InvalidRequestException,
+        ForbiddenException,
+        InvalidResponseException,
+    ) as err:
+        LOGGER.debug("Could not fetch Webasto webapi device names: %s", err)
+        return {}
+
+    if not isinstance(data, dict):
+        return {}
+
+    return _device_names_from_webapi_data(data)
+
+
 async def _async_setup(
     hass: HomeAssistant, entry: WebastoConfigEntry
 ) -> WebastoConnectUpdateCoordinator:
@@ -152,7 +221,7 @@ async def _async_setup(
         )
     await _async_ensure_lovelace_card_resource(hass, card_hash)
 
-    coordinator = WebastoConnectUpdateCoordinator(hass, entry)
+    coordinator = WebastoConnectUpdateCoordinator(hass, entry, integration.version)
     try:
         await coordinator.cloud.connect()
         LOGGER.debug(
@@ -162,12 +231,53 @@ async def _async_setup(
     except UnauthorizedException:
         await coordinator.cloud.close()
         raise ConfigEntryAuthFailed("Invalid email or password specified") from None
-    except (InvalidRequestException, ForbiddenException, InvalidResponseException):
+    except (InvalidRequestException, ForbiddenException) as err:
         await coordinator.cloud.close()
-        raise ConfigEntryNotReady("Error connecting to the API - try again later")
-    except TooManyRequestsException:
+        raise ConfigEntryError(f"Webasto API rejected setup request: {err}") from err
+    except InvalidResponseException as err:
         await coordinator.cloud.close()
-        raise ConfigEntryNotReady("Rate limited - try again later")
+        raise ConfigEntryNotReady(
+            f"Error connecting to the API - try again later: {err}"
+        ) from err
+    except TooManyRequestsException as err:
+        await coordinator.cloud.close()
+        raise ConfigEntryError(
+            f"Rate limited - reload the integration later: {err}"
+        ) from err
+
+    webapi_device_names = await _async_webapi_device_names(coordinator)
+    coordinator.device_names = webapi_device_names
+
+    pending_devices = [
+        device
+        for device in coordinator.cloud.devices.values()
+        if getattr(device, "pending_approval", False)
+    ]
+    if pending_devices:
+        devices = ", ".join(
+            webasto_device_name(
+                device,
+                webapi_device_names.get(str(device.device_id)),
+            )
+            for device in pending_devices
+        )
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            PENDING_APPROVAL_ISSUE_ID,
+            data={"entry_id": entry.entry_id},
+            is_fixable=True,
+            is_persistent=True,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="pending_approval",
+            translation_placeholders={"devices": devices},
+        )
+        await coordinator.cloud.close()
+        raise ConfigEntryError(
+            "Webasto device association is pending approval in the ThermoConnect app"
+        )
+
+    ir.async_delete_issue(hass, DOMAIN, PENDING_APPROVAL_ISSUE_ID)
 
     if coordinator.cloud.devices:
         # connect() already hydrated device state, avoid an immediate duplicate update call.
@@ -176,9 +286,11 @@ async def _async_setup(
         await coordinator.async_config_entry_first_refresh()
 
     for id, device in coordinator.cloud.devices.items():
-        LOGGER.debug("Found device: %s", device.name)
+        device_name = webasto_device_name(device, webapi_device_names.get(str(id)))
+        LOGGER.debug("Found device: %s", device_name)
+        await _async_update_device_registry_name(hass, id, device_name)
         # Migrate unique IDs
-        await _async_migrate_unique_ids(hass, id, device.name, entry)
+        await _async_migrate_unique_ids(hass, id, device_name, entry)
 
     return coordinator
 

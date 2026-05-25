@@ -92,9 +92,7 @@ class WebastoConnectSwitch(WebastoBaseEntity, SwitchEntity):
         self._handle_states()
 
         self.entity_id = switch.ENTITY_ID_FORMAT.format(
-            util_slugify(
-                f"{self._cloud.devices[self._device_id].name} {self._attr_name}"
-            )
+            util_slugify(f"{self._device_name} {self._attr_name}")
         )
 
     @callback

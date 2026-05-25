@@ -2,7 +2,7 @@
 
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed
@@ -13,7 +13,83 @@ from pywebasto.exceptions import (
     UnauthorizedException,
 )
 
-from custom_components.webastoconnect.api import WebastoConnectUpdateCoordinator
+from custom_components.webastoconnect.api import (
+    SCAN_INTERVAL,
+    WebastoConnectUpdateCoordinator,
+    _credential_callbacks,
+    _credential_store_path,
+)
+
+
+def test_scan_interval_is_60_seconds() -> None:
+    """Coordinator polling interval should be one minute."""
+    assert SCAN_INTERVAL.total_seconds() == 60
+
+
+def test_credential_store_path_uses_config_entry_id() -> None:
+    """Credential store path should be unique per config entry."""
+    hass = SimpleNamespace(config=SimpleNamespace(path=lambda *parts: "/".join(parts)))
+    entry = SimpleNamespace(entry_id="entry-1")
+
+    assert _credential_store_path(hass, entry) == ".storage/webasto_entry-1.json"
+
+
+@pytest.mark.asyncio
+async def test_credential_callbacks_store_credentials_by_entry_id(tmp_path) -> None:
+    """Credential callbacks should read and write the per-entry credential file."""
+
+    async def async_add_executor_job(func, *args):
+        return func(*args)
+
+    hass = SimpleNamespace(
+        config=SimpleNamespace(path=lambda *parts: str(tmp_path.joinpath(*parts))),
+        async_add_executor_job=async_add_executor_job,
+    )
+    entry = SimpleNamespace(entry_id="entry-1")
+    credentials = SimpleNamespace(client_id="client", client_secret="secret")
+    credential_load, credential_save = _credential_callbacks(hass, entry)
+
+    assert await credential_load() is None
+
+    await credential_save(credentials)
+
+    assert await credential_load() == {
+        "client_id": "client",
+        "client_secret": "secret",
+    }
+    assert (tmp_path / ".storage" / "webasto_entry-1.json").exists()
+
+
+def test_update_coordinator_uses_entry_credential_callbacks(monkeypatch) -> None:
+    """Update coordinator should pass per-entry credential callbacks."""
+    webasto = Mock()
+    monkeypatch.setattr("custom_components.webastoconnect.api.WebastoConnect", webasto)
+    monkeypatch.setattr(
+        "custom_components.webastoconnect.api.DataUpdateCoordinator.__init__",
+        lambda *args, **kwargs: None,
+    )
+    hass = SimpleNamespace(config=SimpleNamespace(path=lambda *parts: "/".join(parts)))
+    entry = SimpleNamespace(
+        entry_id="entry-1",
+        data={"email": "user@test", "password": "pw"},
+        options={},
+    )
+
+    WebastoConnectUpdateCoordinator(hass, entry, "1.2.3")
+
+    webasto.assert_called_once()
+    assert webasto.call_args.kwargs["username"] == "user@test"
+    assert webasto.call_args.kwargs["password"] == "pw"
+    assert webasto.call_args.kwargs["client_info"].startswith(
+        "HomeAssistant-Webasto 1.2.3 "
+    )
+    assert set(webasto.call_args.kwargs) == {
+        "username",
+        "password",
+        "credential_load",
+        "credential_save",
+        "client_info",
+    }
 
 
 def _build_coordinator(update_mock: AsyncMock) -> WebastoConnectUpdateCoordinator:

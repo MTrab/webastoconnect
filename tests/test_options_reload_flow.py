@@ -11,7 +11,18 @@ from pywebasto.exceptions import (
 )
 
 import custom_components.webastoconnect as integration
+import custom_components.webastoconnect.config_flow as config_flow
 from custom_components.webastoconnect.config_flow import WebastoConnectOptionsFlow
+
+
+@pytest.fixture(autouse=True)
+def mock_integration_version(monkeypatch) -> None:
+    """Provide integration metadata in options flow tests."""
+    monkeypatch.setattr(
+        config_flow,
+        "async_get_integration",
+        AsyncMock(return_value=SimpleNamespace(version="test")),
+    )
 
 
 @pytest.mark.asyncio
@@ -82,12 +93,14 @@ async def test_options_flow_creates_entry_after_successful_auth(monkeypatch) -> 
     """Options flow should create entry directly after successful auth."""
     connect_mock = AsyncMock()
     close_mock = AsyncMock()
+    init_mock = Mock()
 
     class FakeWebasto:
         """Minimal fake Webasto client for options flow tests."""
 
         def __init__(self, *args, **kwargs) -> None:
             """Initialize fake client."""
+            init_mock(*args, **kwargs)
 
         async def connect(self) -> None:
             """Simulate successful auth."""
@@ -103,17 +116,26 @@ async def test_options_flow_creates_entry_after_successful_auth(monkeypatch) -> 
     )
 
     flow = object.__new__(WebastoConnectOptionsFlow)
-    config_entry = SimpleNamespace(data={}, options={})
+    config_entry = SimpleNamespace(entry_id="entry-1", data={}, options={})
     flow.hass = SimpleNamespace(
+        config=SimpleNamespace(path=lambda *parts: "/".join(parts)),
         config_entries=SimpleNamespace(
             async_get_known_entry=Mock(return_value=config_entry)
-        )
+        ),
     )
     flow.handler = "entry-1"
     flow.async_create_entry = Mock(return_value={"type": "create_entry"})
 
     result = await flow.async_step_init({"email": "user@test", "password": "pw"})
 
+    init_mock.assert_called_once()
+    assert init_mock.call_args.kwargs["username"] == "user@test"
+    assert init_mock.call_args.kwargs["password"] == "pw"
+    assert init_mock.call_args.kwargs["client_info"].startswith(
+        "HomeAssistant-Webasto test "
+    )
+    assert "credential_load" in init_mock.call_args.kwargs
+    assert "credential_save" in init_mock.call_args.kwargs
     connect_mock.assert_awaited_once()
     close_mock.assert_awaited_once()
     flow.async_create_entry.assert_called_once_with(
@@ -147,11 +169,12 @@ async def test_options_flow_returns_error_on_invalid_auth(monkeypatch) -> None:
     )
 
     flow = object.__new__(WebastoConnectOptionsFlow)
-    config_entry = SimpleNamespace(data={}, options={})
+    config_entry = SimpleNamespace(entry_id="entry-1", data={}, options={})
     flow.hass = SimpleNamespace(
+        config=SimpleNamespace(path=lambda *parts: "/".join(parts)),
         config_entries=SimpleNamespace(
             async_get_known_entry=Mock(return_value=config_entry)
-        )
+        ),
     )
     flow.handler = "entry-1"
     flow.async_show_form = Mock(return_value={"type": "form"})
@@ -191,11 +214,12 @@ async def test_options_flow_returns_error_on_connection_validation_failure(
     )
 
     flow = object.__new__(WebastoConnectOptionsFlow)
-    config_entry = SimpleNamespace(data={}, options={})
+    config_entry = SimpleNamespace(entry_id="entry-1", data={}, options={})
     flow.hass = SimpleNamespace(
+        config=SimpleNamespace(path=lambda *parts: "/".join(parts)),
         config_entries=SimpleNamespace(
             async_get_known_entry=Mock(return_value=config_entry)
-        )
+        ),
     )
     flow.handler = "entry-1"
     flow.async_show_form = Mock(return_value={"type": "form"})
@@ -233,11 +257,12 @@ async def test_options_flow_returns_error_on_rate_limit(monkeypatch) -> None:
     )
 
     flow = object.__new__(WebastoConnectOptionsFlow)
-    config_entry = SimpleNamespace(data={}, options={})
+    config_entry = SimpleNamespace(entry_id="entry-1", data={}, options={})
     flow.hass = SimpleNamespace(
+        config=SimpleNamespace(path=lambda *parts: "/".join(parts)),
         config_entries=SimpleNamespace(
             async_get_known_entry=Mock(return_value=config_entry)
-        )
+        ),
     )
     flow.handler = "entry-1"
     flow.async_show_form = Mock(return_value={"type": "form"})

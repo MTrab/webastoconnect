@@ -1,5 +1,19 @@
 {
     "title": "Webasto Connect (ThermoConnect)",
+    "issues": {
+        "pending_approval": {
+            "title": "Webasto Connect-enhet krever godkjenning",
+            "description": "Godkjenn ThermoConnect-tilknytningsforespørselen i Webasto-appen før oppsettet fortsetter. Ventende enhet(er): {devices}",
+            "fix_flow": {
+                "step": {
+                    "confirm": {
+                        "title": "Fortsett oppsett av Webasto Connect",
+                        "description": "Når ThermoConnect-tilknytningsforespørselen er godkjent i Webasto-appen, kan du fortsette for å laste integrasjonen på nytt. Ventende enhet(er): {devices}"
+                    }
+                }
+            }
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Denne kontoen er allerede konfigurert",

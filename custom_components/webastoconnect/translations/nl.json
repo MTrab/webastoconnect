@@ -1,5 +1,19 @@
 {
     "title": "Webasto Connect (ThermoConnect)",
+    "issues": {
+        "pending_approval": {
+            "title": "Webasto Connect-apparaat vereist goedkeuring",
+            "description": "Keur het ThermoConnect-koppelingsverzoek goed in de Webasto-app voordat de configuratie wordt voortgezet. Wachtende apparaat/apparaten: {devices}",
+            "fix_flow": {
+                "step": {
+                    "confirm": {
+                        "title": "Webasto Connect-configuratie voortzetten",
+                        "description": "Nadat je het ThermoConnect-koppelingsverzoek in de Webasto-app hebt goedgekeurd, ga je verder om de integratie opnieuw te laden. Wachtende apparaat/apparaten: {devices}"
+                    }
+                }
+            }
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Dit account is al geconfigureerd",
