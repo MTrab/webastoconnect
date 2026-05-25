@@ -60,6 +60,7 @@ def _main_output_end_name(webasto) -> str:
         return f"{output_name} ends"
     return "Output ends"
 
+
 def _extract_simple_timers(webasto: Any) -> list[dict[str, Any]]:
     """Extract `simple` timers (heater + ventilation) from latest API payload."""
     last_data = getattr(webasto, "last_data", None)
@@ -209,6 +210,8 @@ def _next_timer_sensor_payload(
         "next_timer": next_timer,
         "timers": timer_items,
     }
+
+
 SENSORS = [
     WebastoConnectSensorEntityDescription(
         key="temperature",
@@ -312,9 +315,7 @@ class WebastoConnectSensor(WebastoBaseEntity, SensorEntity):
             )
 
         self.entity_id = sensor.ENTITY_ID_FORMAT.format(
-            util_slugify(
-                f"{self._cloud.devices[self._device_id].name} {self._attr_name}"
-            )
+            util_slugify(f"{self._device_name} {self._attr_name}")
         )
 
     @callback

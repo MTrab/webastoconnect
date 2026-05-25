@@ -36,7 +36,7 @@ BINARY_SENSORS = [
         icon_on="mdi:map-marker",
         icon_off="mdi:map-marker-off",
         entity_registry_enabled_default=False,
-    )
+    ),
 ]
 
 
@@ -76,9 +76,7 @@ class WebastoConnectBinarySensor(
         super().__init__(device_id, coordinator, description)
 
         self.entity_id = binary_sensor.ENTITY_ID_FORMAT.format(
-            util_slugify(
-                f"{self._cloud.devices[self._device_id].name} {self._attr_name}"
-            )
+            util_slugify(f"{self._device_name} {self._attr_name}")
         )
 
         self._attr_is_on = self.entity_description.value_fn(  # type: ignore

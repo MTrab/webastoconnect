@@ -91,9 +91,7 @@ _BASE_SCHEMA = vol.Schema({vol.Required(ATTR_DEVICE_ID): cv.string})
 _CREATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
     {
         vol.Required(ATTR_START_TIME): cv.string,
-        vol.Required(ATTR_DURATION_MINUTES): vol.All(
-            vol.Coerce(int), vol.Range(min=1)
-        ),
+        vol.Required(ATTR_DURATION_MINUTES): vol.All(vol.Coerce(int), vol.Range(min=1)),
         vol.Optional(ATTR_REPEAT_DAYS, default=[]): [vol.In(tuple(WEEKDAY_TO_MASK))],
         vol.Optional(ATTR_REPEAT): vol.All(vol.Coerce(int), vol.Range(min=0)),
         vol.Optional(ATTR_ENABLED, default=True): cv.boolean,
@@ -113,9 +111,7 @@ _UPDATE_TIMER_SCHEMA = _BASE_SCHEMA.extend(
         vol.Optional(ATTR_LINE, default=LINE_HEATER): vol.In(VALID_TIMER_LINES),
         vol.Required(ATTR_TIMER_INDEX): vol.All(vol.Coerce(int), vol.Range(min=0)),
         vol.Optional(ATTR_START_TIME): cv.string,
-        vol.Optional(ATTR_DURATION_MINUTES): vol.All(
-            vol.Coerce(int), vol.Range(min=1)
-        ),
+        vol.Optional(ATTR_DURATION_MINUTES): vol.All(vol.Coerce(int), vol.Range(min=1)),
         vol.Optional(ATTR_REPEAT_DAYS): [vol.In(tuple(WEEKDAY_TO_MASK))],
         vol.Optional(ATTR_REPEAT): vol.All(vol.Coerce(int), vol.Range(min=0)),
         vol.Optional(ATTR_ENABLED): cv.boolean,
@@ -328,7 +324,9 @@ def _coerce_timer(
     start = data.get(ATTR_START, getattr(existing, "start", None))
     if ATTR_START_TIME in data:
         if hass is None:
-            raise HomeAssistantError("hass context is required for start_time conversion")
+            raise HomeAssistantError(
+                "hass context is required for start_time conversion"
+            )
         start = _start_minutes_from_local_time(hass, data.get(ATTR_START_TIME))
 
     duration = data.get(ATTR_DURATION, getattr(existing, "duration", None))
@@ -364,7 +362,11 @@ async def async_create_timer(
     """Create timer by appending to current timer list."""
 
     async def _operation() -> None:
-        output = _output_for_line(line) if line is not None else _active_output_for_device(device)
+        output = (
+            _output_for_line(line)
+            if line is not None
+            else _active_output_for_device(device)
+        )
         timers = await coordinator.cloud.get_timers(device=device, line=output)
         timers.append(timer)
         await coordinator.cloud.save_timers(device=device, timers=timers, line=output)
@@ -503,6 +505,7 @@ async def _async_handle_delete_timer(hass: HomeAssistant, call: ServiceCall) -> 
 
 def async_register_services(hass: HomeAssistant) -> None:
     """Register domain services."""
+
     async def _handle_create(call: ServiceCall) -> None:
         await _async_handle_create_timer(hass, call)
 

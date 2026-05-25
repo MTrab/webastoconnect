@@ -1,12 +1,14 @@
 """Config flow for setting up the integration."""
 
 import logging
+from datetime import datetime
 from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import callback
+from homeassistant.loader import async_get_integration
 from pywebasto import WebastoConnect
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 
@@ -21,6 +23,7 @@ except ImportError:
     InvalidResponseException = InvalidRequestException
     TooManyRequestsException = InvalidRequestException
 
+from .api import _credential_callbacks
 from .const import DOMAIN
 
 LOGGER = logging.getLogger(__name__)
@@ -52,13 +55,18 @@ class WebastoConnectConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
+            integration = await async_get_integration(self.hass, DOMAIN)
             if any(
                 entry.data[CONF_EMAIL] == user_input[CONF_EMAIL]
                 for entry in self._async_current_entries()
             ):
                 return self.async_abort(reason="already_configured")
 
-            webasto = WebastoConnect(user_input[CONF_EMAIL], user_input[CONF_PASSWORD])
+            webasto = WebastoConnect(
+                username=user_input[CONF_EMAIL],
+                password=user_input[CONF_PASSWORD],
+                client_info=f"HomeAssistant-Webasto {integration.version} {int(datetime.now().timestamp())}",
+            )
             try:
                 await webasto.connect()
                 LOGGER.debug("Authorization OK")
@@ -106,7 +114,17 @@ class WebastoConnectConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
-            webasto = WebastoConnect(user_input[CONF_EMAIL], user_input[CONF_PASSWORD])
+            integration = await async_get_integration(self.hass, DOMAIN)
+            credential_load, credential_save = _credential_callbacks(
+                self.hass, reauth_entry
+            )
+            webasto = WebastoConnect(
+                username=user_input[CONF_EMAIL],
+                password=user_input[CONF_PASSWORD],
+                credential_load=credential_load,
+                credential_save=credential_save,
+                client_info=f"HomeAssistant-Webasto {integration.version} {int(datetime.now().timestamp())}",
+            )
             try:
                 await webasto.connect()
                 LOGGER.debug("Re-authorization OK")
@@ -161,7 +179,17 @@ class WebastoConnectOptionsFlow(config_entries.OptionsFlow):
         errors = {}
 
         if user_input is not None:
-            webasto = WebastoConnect(user_input[CONF_EMAIL], user_input[CONF_PASSWORD])
+            integration = await async_get_integration(self.hass, DOMAIN)
+            credential_load, credential_save = _credential_callbacks(
+                self.hass, self.config_entry
+            )
+            webasto = WebastoConnect(
+                username=user_input[CONF_EMAIL],
+                password=user_input[CONF_PASSWORD],
+                credential_load=credential_load,
+                credential_save=credential_save,
+                client_info=f"HomeAssistant-Webasto {integration.version} {int(datetime.now().timestamp())}",
+            )
             try:
                 await webasto.connect()
                 LOGGER.debug("Authorization OK")

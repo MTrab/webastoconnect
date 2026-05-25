@@ -51,9 +51,7 @@ class WebastoConnectDeviceTracker(WebastoBaseEntity, TrackerEntity):
         super().__init__(device_id, coordinator, description)
 
         self.entity_id = device_tracker.ENTITY_ID_FORMAT.format(  # type: ignore
-            util_slugify(
-                f"{self._cloud.devices[self._device_id].name} {self._attr_name}"
-            )
+            util_slugify(f"{self._device_name} {self._attr_name}")
         )
 
         location = self._location_data

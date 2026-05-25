@@ -1,5 +1,18 @@
 {
     "title": "Webasto Connect (ThermoConnect)",
+    "issues": {
+        "pending_approval": {
+            "title": "Zařízení Webasto Connect vyžaduje schválení",
+            "fix_flow": {
+                "step": {
+                    "confirm": {
+                        "title": "Pokračovat v nastavení Webasto Connect",
+                        "description": "Po schválení požadavku na propojení ThermoConnect v aplikaci Webasto pokračujte opětovným načtením integrace. Čekající zařízení: {devices}"
+                    }
+                }
+            }
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Tento účet je již nakonfigurován",
