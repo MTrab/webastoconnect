@@ -3,7 +3,6 @@
     "issues": {
         "pending_approval": {
             "title": "Webasto Connect-enhet krever godkjenning",
-            "description": "Godkjenn ThermoConnect-tilknytningsforespørselen i Webasto-appen før oppsettet fortsetter. Ventende enhet(er): {devices}",
             "fix_flow": {
                 "step": {
                     "confirm": {

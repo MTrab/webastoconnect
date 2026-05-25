@@ -3,7 +3,6 @@
     "issues": {
         "pending_approval": {
             "title": "Webasto Connect-Gerät erfordert Genehmigung",
-            "description": "Genehmige die ThermoConnect-Verknüpfungsanfrage in der Webasto-App, bevor die Einrichtung fortgesetzt wird. Ausstehende Geräte: {devices}",
             "fix_flow": {
                 "step": {
                     "confirm": {

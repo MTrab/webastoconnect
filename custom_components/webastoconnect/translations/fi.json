@@ -3,7 +3,6 @@
     "issues": {
         "pending_approval": {
             "title": "Webasto Connect -laite vaatii hyväksynnän",
-            "description": "Hyväksy ThermoConnect-yhdistämispyyntö Webasto-sovelluksessa ennen määrityksen jatkamista. Odottavat laitteet: {devices}",
             "fix_flow": {
                 "step": {
                     "confirm": {

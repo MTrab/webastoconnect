@@ -3,7 +3,6 @@
     "issues": {
         "pending_approval": {
             "title": "Zařízení Webasto Connect vyžaduje schválení",
-            "description": "Před pokračováním v nastavení schvalte požadavek na propojení ThermoConnect v aplikaci Webasto. Čekající zařízení: {devices}",
             "fix_flow": {
                 "step": {
                     "confirm": {

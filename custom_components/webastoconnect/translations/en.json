@@ -3,7 +3,6 @@
     "issues": {
         "pending_approval": {
             "title": "Webasto Connect device approval required",
-            "description": "Approve the ThermoConnect association request in the Webasto app before continuing setup. Pending device(s): {devices}",
             "fix_flow": {
                 "step": {
                     "confirm": {

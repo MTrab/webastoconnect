@@ -3,7 +3,6 @@
     "issues": {
         "pending_approval": {
             "title": "Webasto Connect-apparaat vereist goedkeuring",
-            "description": "Keur het ThermoConnect-koppelingsverzoek goed in de Webasto-app voordat de configuratie wordt voortgezet. Wachtende apparaat/apparaten: {devices}",
             "fix_flow": {
                 "step": {
                     "confirm": {
