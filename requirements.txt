@@ -1,4 +1,4 @@
-colorlog==6.10.1
+colorlog==6.11.0
 homeassistant==2026.6.2
 pywebasto==3.0.0
 pytest==9.0.3
