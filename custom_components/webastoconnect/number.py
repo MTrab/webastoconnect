@@ -20,7 +20,9 @@ NUMBERS = [
         name="Low Voltage Cutoff",
         entity_category=EntityCategory.CONFIG,
         value_fn=lambda webasto: webasto.low_voltage_cutoff,
-        set_fn=lambda webasto, state: webasto.set_low_voltage_cutoff(state),
+        set_fn=lambda webasto, device, state: webasto.set_low_voltage_cutoff(
+            device, state
+        ),
         native_min_value=0,
         native_max_value=30,
         native_step=0.1,
@@ -33,7 +35,9 @@ NUMBERS = [
         name="Temperature Compensation",
         entity_category=EntityCategory.CONFIG,
         value_fn=lambda webasto: webasto.temperature_compensation,
-        set_fn=lambda webasto, state: webasto.set_temperature_compensation(state),
+        set_fn=lambda webasto, device, state: webasto.set_temperature_compensation(
+            device, state
+        ),
         native_min_value=-10,
         native_max_value=10,
         native_step=0.5,
@@ -102,6 +106,7 @@ class WebastoConnectNumber(WebastoBaseEntity, NumberEntity):
         LOGGER.debug("Setting '%s' to '%s'", self.entity_id, value)
         await self.coordinator.async_execute_cloud_call(
             self.entity_description.set_fn,  # type: ignore[arg-type]
+            self._cloud,
             self._device,
             value,
         )

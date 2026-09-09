@@ -79,7 +79,7 @@ class WebastoConnectNumberEntityDescription(
     """Describes a Webasto number."""
 
     value_fn: Callable[[Any], Any]
-    set_fn: Callable[[Any, Any], Any] | None = None
+    set_fn: Callable[[WebastoConnect, WebastoDevice, float], Any] | None = None
     unit_fn: Callable[["WebastoDevice"], Any] | None = None
 
 
