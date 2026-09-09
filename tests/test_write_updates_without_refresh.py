@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from custom_components.webastoconnect.number import WebastoConnectNumber
+from custom_components.webastoconnect.number import NUMBERS, WebastoConnectNumber
 from custom_components.webastoconnect.switch import WebastoConnectSwitch
 
 
@@ -63,9 +63,20 @@ async def test_switch_turn_off_updates_listeners_without_refresh() -> None:
 
 
 @pytest.mark.asyncio
-async def test_number_set_value_updates_listeners_without_refresh() -> None:
+@pytest.mark.parametrize(
+    ("description_key", "method_name", "value"),
+    [
+        ("low_voltage_cutoff", "set_low_voltage_cutoff", 12.5),
+        ("ext_temp_comp", "set_temperature_compensation", -1.5),
+    ],
+)
+async def test_number_set_value_updates_listeners_without_refresh(
+    description_key: str, method_name: str, value: float
+) -> None:
     """Number writes should notify listeners and skip extra refresh."""
     set_fn = AsyncMock()
+    device = object()
+    cloud = SimpleNamespace(devices={1: device}, **{method_name: set_fn})
     coordinator = SimpleNamespace(
         async_update_listeners=Mock(),
         async_refresh=AsyncMock(),
@@ -73,14 +84,18 @@ async def test_number_set_value_updates_listeners_without_refresh() -> None:
     )
     number = object.__new__(WebastoConnectNumber)
     number.entity_id = "number.test"
-    number.entity_description = SimpleNamespace(set_fn=set_fn)
-    number._cloud = SimpleNamespace(devices={1: object()})
+    number.entity_description = next(
+        description for description in NUMBERS if description.key == description_key
+    )
+    number._cloud = cloud
     number._device_id = 1
     number.coordinator = coordinator
 
-    await number.async_set_native_value(12.5)
+    await number.async_set_native_value(value)
 
-    set_fn.assert_awaited_once_with(number._cloud.devices[1], 12.5)
-    coordinator.async_execute_cloud_call.assert_awaited_once()
+    set_fn.assert_awaited_once_with(device, value)
+    coordinator.async_execute_cloud_call.assert_awaited_once_with(
+        number.entity_description.set_fn, cloud, device, value
+    )
     coordinator.async_update_listeners.assert_called_once()
     coordinator.async_refresh.assert_not_called()
